@@ -2,6 +2,9 @@ Free quad random quantized note generator for macOS (Apple Silicon), VST3 and Au
 
 **Download `Repetitor-Installer.pkg`** and double-click it. macOS blocks it the first time: open System Settings > Privacy & Security and click "Open Anyway". Full guide: see INSTALL.txt in the ZIP or in the repository.
 
+### v1.5.1
+- Manuals (English and German) updated for all 1.5 features
+
 ### New in v1.5.0
 - **Rate and Gate per channel**: every channel has its own speed (1/32 to 1 bar or MIDI IN) and note length (up to legato)
 - **Starts right away**: all channels run on 1/16 as soon as the DAW plays, no MIDI input needed
