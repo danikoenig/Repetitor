@@ -20,7 +20,7 @@ private:
     int ch;
     juce::ToggleButton onButton;
     juce::ComboBox srcBox, lenBox, outBox;
-    Knob kOct;
+    Knob kGate, kOct;
     StepView steps;
     int shownNote = -2, shownFlash = -1;
     float glow = 0.0f;
@@ -43,6 +43,8 @@ private:
     void timerCallback() override;
     void updateLengthColour();
     int keyAt (juce::Point<int>) const;
+    juce::Rectangle<float> keyRect (int pitchClass) const;
+    static bool isBlackKey (int pitchClass);
     void mouseDown (const juce::MouseEvent&) override;
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
@@ -63,21 +65,20 @@ private:
     // Loop
     Knob kLength, kDensity;
     juce::ToggleButton rhythmButton { "RHYTHM" };
-    juce::ComboBox gateBox;
     // Vary
-    Knob kSkip, kOctChance, kFifth;
+    Knob kSkip, kOctChance;
     std::unique_ptr<ChoiceSwitch> octDirSwitch;
     // MIDI
     juce::ComboBox inBox;
-    juce::ToggleButton thruButton { "THRU" }, resetPlayButton { "RESET ON PLAY" };
-    Knob kVel;
+    juce::ToggleButton thruButton { "THRU" };
+    Knob kVel, kHuman;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> rhythmAtt, thruAtt, resetPlayAtt;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> gateAtt, inAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> rhythmAtt, thruAtt;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> inAtt;
 
     std::array<std::unique_ptr<ChannelRow>, numChannels> rows;
 
-    juce::Rectangle<int> secPitch, secScale, secLoop, secVary, secMidi, octDirLabel, scaleInfo, gateLabel, inLabel;
+    juce::Rectangle<int> secPitch, secScale, secLoop, secVary, secMidi, octDirLabel, scaleInfo, inLabel;
     int shownScale = -1, shownRoot = -1, shownLen = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RepetitorEditor)

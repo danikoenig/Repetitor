@@ -28,7 +28,7 @@ APVTS::ParameterLayout RepetitorProcessor::createLayout()
         juce::AudioParameterIntAttributes().withStringFromValueFunction ([] (int v, int) { return "C" + juce::String (v); })));
     l.add (std::make_unique<juce::AudioParameterInt> (id (spread), "Spread", 0, 24, 12,
         juce::AudioParameterIntAttributes().withLabel ("st")));
-    l.add (std::make_unique<juce::AudioParameterFloat> (id (downUp), "Down/Up", juce::NormalisableRange<float> (-1.0f, 1.0f, 0.01f), 1.0f,
+    l.add (std::make_unique<juce::AudioParameterFloat> (id (downUp), "Down/Up", juce::NormalisableRange<float> (-1.0f, 1.0f, 0.01f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
         {
             if (v > 0.99f)  return juce::String ("UP");
@@ -38,8 +38,8 @@ APVTS::ParameterLayout RepetitorProcessor::createLayout()
         })));
 
     // Skala (3 Schalter)
-    l.add (std::make_unique<juce::AudioParameterChoice> (id (family), "Maj/Min/Sym", juce::StringArray { "Major", "Minor", "Symmetric" }, 1));
-    l.add (std::make_unique<juce::AudioParameterChoice> (id (flavor), "Flavor", juce::StringArray { "L", "C", "R" }, 0));
+    l.add (std::make_unique<juce::AudioParameterChoice> (id (family), "Mode", juce::StringArray { "Major", "Minor" }, 1));
+    l.add (std::make_unique<juce::AudioParameterChoice> (id (flavor), "Flavor", juce::StringArray { "Penta", "Blues / Dorian", "Bright / Dark" }, 0));
     l.add (std::make_unique<juce::AudioParameterChoice> (id (count), "Count", juce::StringArray { "Few", "More", "All" }, 1));
     l.add (std::make_unique<juce::AudioParameterBool> (id (custom), "Custom Scale", false));
     l.add (std::make_unique<juce::AudioParameterInt> (id (mask), "Custom Notes", 1, 4095, Scales::maskOf (Scales::get (1, 0, 1))));
@@ -49,24 +49,22 @@ APVTS::ParameterLayout RepetitorProcessor::createLayout()
     l.add (std::make_unique<juce::AudioParameterBool> (id (rhythm), "Rhythm Mode", false));
     l.add (std::make_unique<juce::AudioParameterFloat> (id (density), "Density", juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return juce::String (juce::roundToInt (v * 100.0f)) + "%"; })));
-    l.add (std::make_unique<juce::AudioParameterChoice> (id (gate), "Gate", gateNames, 3));
 
     // Variation (wird bei jedem Trigger neu gewuerfelt, auch im Loop)
     auto pct = juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return juce::String (juce::roundToInt (v * 100.0f)) + "%"; });
     l.add (std::make_unique<juce::AudioParameterFloat> (id (skip), "Skip Chance", juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f, pct));
     l.add (std::make_unique<juce::AudioParameterFloat> (id (octChance), "Octave Chance", juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f, pct));
     l.add (std::make_unique<juce::AudioParameterChoice> (id (octDir), "Octave Direction", juce::StringArray { "DOWN", "BOTH", "UP" }, 1));
-    l.add (std::make_unique<juce::AudioParameterFloat> (id (fifth), "Fifth Chance", juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f, pct));
 
     // MIDI
     l.add (std::make_unique<juce::AudioParameterChoice> (id (inMode), "Input", juce::StringArray { "ANY NOTE", "C1-D#1" }, 0));
     l.add (std::make_unique<juce::AudioParameterBool> (id (thru), "Thru", false));
-    l.add (std::make_unique<juce::AudioParameterInt> (id (velocity), "Clock Velocity", 1, 127, 100));
-    l.add (std::make_unique<juce::AudioParameterBool> (id (resetPlay), "Reset on Play", true));
+    l.add (std::make_unique<juce::AudioParameterInt> (id (velocity), "Velocity", 1, 127, 100));
+    l.add (std::make_unique<juce::AudioParameterInt> (id (humanize), "Humanize", 0, 40, 0,
+        juce::AudioParameterIntAttributes().withStringFromValueFunction ([] (int v, int) { return v == 0 ? juce::String ("OFF") : juce::String::fromUTF8 ("\xc2\xb1") + juce::String (v); })));
 
     // Kanaele
-    juce::StringArray lenChoices { "GLOBAL" };
-    lenChoices.addArray (lengthNames);
+    const auto lenChoices = channelLengthNames();
     juce::StringArray outChoices;
     for (int i = 1; i <= 16; ++i)
         outChoices.add ("CH " + juce::String (i));
@@ -75,7 +73,10 @@ APVTS::ParameterLayout RepetitorProcessor::createLayout()
     {
         const auto n = " " + juce::String (c + 1);
         l.add (std::make_unique<juce::AudioParameterBool> (id (chOn (c)), "On" + n, true));
-        l.add (std::make_unique<juce::AudioParameterChoice> (id (chSrc (c)), "Source" + n, sourceNames, 0));
+        l.add (std::make_unique<juce::AudioParameterChoice> (id (chSrc (c)), "Rate" + n, sourceNames, defaultRate));
+        l.add (std::make_unique<juce::AudioParameterFloat> (id (chGate (c)), "Gate" + n, juce::NormalisableRange<float> (0.05f, 1.0f, 0.01f), 0.5f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return v >= 0.995f ? juce::String ("LEGATO") : juce::String (juce::roundToInt (v * 100.0f)) + "%"; })));
+        l.add (std::make_unique<juce::AudioParameterInt> (id (chPos (c)), "Loop Position" + n, 0, maxSteps - 1, 0));
         l.add (std::make_unique<juce::AudioParameterChoice> (id (chLen (c)), "Length" + n, lenChoices, 0));
         l.add (std::make_unique<juce::AudioParameterInt> (id (chOct (c)), "Octave" + n, -3, 3, 0,
             juce::AudioParameterIntAttributes().withStringFromValueFunction ([] (int v, int) { return (v > 0 ? "+" : "") + juce::String (v); })));
@@ -143,8 +144,17 @@ void RepetitorProcessor::usePresetScale()
 int RepetitorProcessor::effectiveLength (int ch) const
 {
     const int own = (int) p (ParamIDs::chLen (ch));
-    const int idx = own == 0 ? (int) p (ParamIDs::length) : own - 1;
-    return lengthSteps[(size_t) juce::jlimit (0, 11, idx)];
+    if (own == 0)
+        return lengthSteps[(size_t) juce::jlimit (0, 11, (int) p (ParamIDs::length))];
+    return own > maxSteps ? 0 : own;   // 1..32, danach INF
+}
+
+int RepetitorProcessor::loopPos (int ch) const
+{
+    const int len = effectiveLength (ch);
+    if (len == 0)
+        return 0;
+    return juce::jlimit (0, maxSteps - len, (int) p (ParamIDs::chPos (ch)));
 }
 
 int RepetitorProcessor::noteForValue (int ch, float v) const
@@ -212,6 +222,12 @@ void RepetitorProcessor::allNotesOff (int offset, juce::MidiBuffer& out)
 void RepetitorProcessor::trigger (int ch, int offset, int velocity, int inNote, double bpm, juce::MidiBuffer& out)
 {
     auto& c = chans[(size_t) ch];
+    {
+        const juce::int64 now = sampleClock + offset;
+        if (c.lastTrigAt >= 0 && now > c.lastTrigAt && now - c.lastTrigAt < (juce::int64) (sr * 4.0))
+            c.stepSamples = (double) (now - c.lastTrigAt);
+        c.lastTrigAt = now;
+    }
     auto& v = view[(size_t) ch];
     const int len = effectiveLength (ch);
     int head = v.head.load();
@@ -234,7 +250,7 @@ void RepetitorProcessor::trigger (int ch, int offset, int velocity, int inNote, 
             c.pos = (c.prevLen <= 0) ? 0 : c.pos % len;
         if (c.pendingReset)
             c.pos = 0;
-        idx = ((head - len + 1 + c.pos) % maxSteps + maxSteps) % maxSteps;
+        idx = ((head - loopPos (ch) - len + 1 + c.pos) % maxSteps + maxSteps) % maxSteps;
         c.pos = (c.pos + 1) % len;
     }
     c.prevLen = len;
@@ -252,8 +268,6 @@ void RepetitorProcessor::trigger (int ch, int offset, int velocity, int inNote, 
         const int jump = dir == 0 ? -12 : dir == 2 ? 12 : (rng.nextBool() ? 12 : -12);
         if (note + jump >= 0 && note + jump <= 127) note += jump;
     }
-    if (rng.nextFloat() < p (ParamIDs::fifth) && note + 7 <= 127)
-        note += 7;
     v.lastNote.store (note);
 
     const bool on = p (ParamIDs::chOn (ch)) > 0.5f;
@@ -264,23 +278,22 @@ void RepetitorProcessor::trigger (int ch, int offset, int velocity, int inNote, 
 
     noteOff (ch, offset, out);
     const int outCh = (int) p (ParamIDs::chOut (ch)) + 1;
+    const int hum = (int) p (ParamIDs::humanize);
+    if (hum > 0)
+        velocity += rng.nextInt (2 * hum + 1) - hum;
     out.addEvent (juce::MidiMessage::noteOn (outCh, note, (juce::uint8) juce::jlimit (1, 127, velocity)), offset);
     c.playingNote = note;
     c.playingOutCh = outCh;
     v.note.store (note);
 
-    const int gateIdx = (int) p (ParamIDs::gate);
-    if (gateIdx == 0 && inNote >= 0)
-    {
-        c.heldInput = inNote;   // Note-Off kommt mit dem Loslassen der Eingangsnote
-        c.offAt = -1;
-    }
-    else
-    {
-        const double beats = gateIdx == 0 ? 0.25 : gateBeats[(size_t) gateIdx];
-        const double samples = juce::jmax (sr * 0.001, beats * 60.0 / bpm * sr);
-        c.offAt = sampleClock + offset + (juce::int64) samples;
-    }
+    // Gate pro Kanal: Anteil der Schrittlaenge (Clock: Rate, MIDI IN: Abstand der letzten Trigger)
+    juce::ignoreUnused (inNote);
+    const int src = (int) p (ParamIDs::chSrc (ch));
+    const double step = src > 0 ? sourceBeats[(size_t) src] * 60.0 / bpm * sr
+                                : (c.stepSamples > 0.0 ? c.stepSamples : 0.25 * 60.0 / bpm * sr);
+    const float g = p (ParamIDs::chGate (ch));
+    const double samples = juce::jmax (sr * 0.001, (g >= 0.995f ? 1.0 : (double) g) * step);
+    c.offAt = sampleClock + offset + (juce::int64) samples;
 }
 
 void RepetitorProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
@@ -311,9 +324,8 @@ void RepetitorProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     if (playing && ! wasPlaying)
     {
-        if (p (ParamIDs::resetPlay) > 0.5f)
-            for (auto& c : chans)
-                c.pendingReset = true;
+        for (auto& c : chans)   // Loops starten beim Play immer bei Schritt 1
+            c.pendingReset = true;
         for (auto& c : chans)
             c.lastClockStep = std::numeric_limits<juce::int64>::min();
     }

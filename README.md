@@ -13,37 +13,31 @@ When you hear something you like, turn Length down to loop the most recent notes
 ## Features
 
 - **4 channels**, each on its own MIDI channel (default 1-4), with its own colour and step display
-- **Trigger source per channel**: MIDI IN (every incoming note is a trigger, like the module's normalled inputs) or an internal clock synced to the DAW tempo (1/32 to 1 bar, triplets)
+- **Rate per channel**: own speed synced to the DAW tempo (1/32 to 1 bar, triplets, default 1/16, runs as soon as you press play) or MIDI IN (every incoming note is a trigger)
+- **Gate per channel**: note length in % of the step, up to legato
 - **Input mode**: ANY NOTE triggers all MIDI IN channels, or C1-D#1 for one note per channel
-- **Pitch**: Root, Octave, Spread (0 to 24 semitones), Down/Up (above, around or below the root), Octave offset per channel
-- **27 scales** on three switches like the module: MAJ / MIN / SYM, Flavor, Count (few, more, all notes)
+- **Pitch**: Root, Octave, Spread (0 to 24 semitones), Down/Up (around, above or below the root), Octave offset per channel
+- **Velocity** and **Humanize** (random velocity variation)
+- **18 scales** on three switches: MAJOR / MINOR, Flavor (Major: Penta, Blues, Bright. Minor: Penta, Dorian, Dark), Count (few, more, all notes)
 - **Custom scale**: click the keys of the mini keyboard to add or remove notes. The root always stays in, the scale moves with Root
-- **Length**: INF = always new notes; 1, 2, 3, 4, 5, 6, 8, 12, 16, 24, 32 = loop the most recent notes. Colour like the module LED: red = divisible by 2, blue = by 3, violet = both. Global or per channel
+- **Length**: INF = always new notes; 1, 2, 3, 4, 5, 6, 8, 12, 16, 24, 32 = loop the most recent notes. Colour like the module LED: red = divisible by 2, blue = by 3, violet = both. Global or per channel (any length 1 to 32). Drag the loop box to move it, or drag across the steps to pick your own loop
 - **Rhythm mode**: random repeating rhythm instead of pass-through, Density sets how many steps play. The rhythm is part of the loop
-- **Vary**: Skip (leave notes out), Octave (jump down / both / up) and 5th, each with a chance. Rolled fresh on every trigger, so the loop never sounds static
-- **Gate**: INPUT (as long as the incoming note) or 1/64 to 1/2
+- **Vary**: Skip (leave notes out) and Octave (jump down / both / up), each with a chance. Rolled fresh on every trigger, so the loop never sounds static
 - **NEW** rolls new notes right away, **INIT** sets every control back to its default, optional loop restart when the DAW starts
 - **Resizable window**: drag the bottom right corner (60 % to 200 %), opens at 100 %
 - Scale, Root and Spread changes are applied live to the loop
 - Loops are saved with the project
 
-The 27 scales (family / flavor / count):
+The 18 scales (mode / flavor / count):
 
 | | Few | More | All |
 |---|---|---|---|
-| MAJ Ionian | Major Triad | Major Pentatonic | Major |
-| MAJ Lydian | Major 7 | Lydian Pentatonic | Lydian |
-| MAJ Mixo | Dominant 7 | Dominant Pentatonic | Mixolydian |
-| MIN Aeolian | Minor Triad | Minor Pentatonic | Minor |
-| MIN Dorian | Minor 7 | Dorian Pentatonic | Dorian |
-| MIN Harmonic | Minor Major 7 | Hirajoshi | Harmonic Minor |
-| SYM Aug | Augmented Triad | Augmented Hexatonic | Whole Tone |
-| SYM Dim | Tritone | Diminished 7 | Octatonic |
-| SYM Chroma | Octaves | Fifths | Chromatic |
-
-## Manual
-
-[English](docs/Repetitor-Manual-EN.pdf) · [Deutsch](docs/Repetitor-Manual-DE.pdf) (also in every release)
+| MAJOR Penta | Major Triad | Major Pentatonic | Major |
+| MAJOR Blues | Dominant 7 | Major Blues | Mixo Blues |
+| MAJOR Bright | Major 7 | Lydian Pentatonic | Lydian |
+| MINOR Penta | Minor Triad | Minor Pentatonic | Minor |
+| MINOR Dorian | Minor 7 | Dorian Pentatonic | Dorian |
+| MINOR Dark | Dark Triad | Dark Pentatonic | Phrygian |
 
 ## Use
 

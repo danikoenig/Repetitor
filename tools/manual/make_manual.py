@@ -35,15 +35,12 @@ CELLB = ParagraphStyle("cellb", parent=CELL, fontName="Helvetica-Bold")
 BULLET = ParagraphStyle("bullet", parent=BODY, leftIndent=12, bulletIndent=2, spaceAfter=3)
 
 SCALES = [
-    ("MAJ", "Ionian",   "Major Triad",     "Major Pentatonic",    "Major"),
-    ("MAJ", "Lydian",   "Major 7",         "Lydian Pentatonic",   "Lydian"),
-    ("MAJ", "Mixo",     "Dominant 7",      "Dominant Pentatonic", "Mixolydian"),
-    ("MIN", "Aeolian",  "Minor Triad",     "Minor Pentatonic",    "Minor"),
-    ("MIN", "Dorian",   "Minor 7",         "Dorian Pentatonic",   "Dorian"),
-    ("MIN", "Harmonic", "Minor Major 7",   "Hirajoshi",           "Harmonic Minor"),
-    ("SYM", "Aug",      "Augmented Triad", "Augmented Hexatonic", "Whole Tone"),
-    ("SYM", "Dim",      "Tritone",         "Diminished 7",        "Octatonic"),
-    ("SYM", "Chroma",   "Octaves",         "Fifths",              "Chromatic"),
+    ("MAJOR", "Penta",  "Major Triad",   "Major Pentatonic",  "Major"),
+    ("MAJOR", "Blues",  "Dominant 7",    "Major Blues",       "Mixo Blues"),
+    ("MAJOR", "Bright", "Major 7",       "Lydian Pentatonic", "Lydian"),
+    ("MINOR", "Penta",  "Minor Triad",   "Minor Pentatonic",  "Minor"),
+    ("MINOR", "Dorian", "Minor 7",       "Dorian Pentatonic", "Dorian"),
+    ("MINOR", "Dark",   "Dark Triad",    "Dark Pentatonic",   "Phrygian"),
 ]
 
 T = {
@@ -63,13 +60,13 @@ T = {
  ],
  "quick": "Quick start",
  "daws": [
-   ("Bitwig", "Put <b>Repetitor</b> on an instrument track before the synth. Draw or play notes: each note is a trigger."),
+   ("Bitwig", "Put <b>Repetitor</b> on an instrument track before the synth and press play. For MIDI triggers set RATE to MIDI IN."),
    ("Logic Pro", "Instrument track: MIDI FX slot &gt; Audio Units &gt; Dani Koenig &gt; Repetitor."),
-   ("Ableton Live", "1. MIDI track 1: load <b>Repetitor Instrument</b> and give it a clip with notes (or set the channels to the internal clock).<br/>"
+   ("Ableton Live", "1. MIDI track 1: load <b>Repetitor Instrument</b> (it runs on 1/16 as soon as you press play).<br/>"
                     "2. MIDI track 2 with your synth: <i>MIDI From</i> = track 1, below that <i>Repetitor Instrument</i>. Monitor = <i>In</i>.<br/>"
                     "Ableton merges all MIDI channels of a plugin, so all four voices arrive on track 2. For one voice per track, switch the other channels off."),
  ],
- "first": ("First patch: one note per 1/16 in a clip (or channel 1 SOURCE = 1/16), Length on <b>INF</b>, press play. "
+ "first": ("First patch: load Repetitor before a synth and press play: all four channels run on 1/16 right away. "
            "Pick a scale, set Spread. When a phrase sounds good, turn Length to 8 or 16. Press <b>NEW</b> for new notes."),
  "overview": "The window",
  "controls": "Controls",
@@ -78,11 +75,11 @@ T = {
     ("Root", "Root note of the scale (C to B)."),
     ("Octave", "Octave of the root. C3 = MIDI note 60 (as in Bitwig and Ableton)."),
     ("Spread", "How far notes can move away from the root: 0 to 24 semitones. 0 = only the root."),
-    ("Down/Up", "Where the range sits. UP: from the root upwards. DOWN: from the root downwards. Centre: around the root."),
+    ("Down/Up", "Where the range sits. Centre (default): around the root. UP: from the root upwards. DOWN: from the root downwards."),
   ]),
   ("scale", "SCALE", [
-    ("MODE", "Major, minor or symmetric scales."),
-    ("FLAVOR", "Style of the scale. The names change with MODE."),
+    ("MODE", "Major or minor."),
+    ("FLAVOR", "Major: PENTA, BLUES, BRIGHT (lydian). Minor: PENTA, DORIAN, DARK (phrygian)."),
     ("COUNT", "Number of notes: FEW (chord tones), MORE (pentatonic), ALL (full scale)."),
     ("Keyboard", "Shows the notes of the scale, the root in orange. <b>Click a key</b> to add or remove a note: this makes your own CUSTOM scale. "
                  "The root always stays in. Your scale moves with Root. Click one of the three switches to go back to the presets."),
@@ -92,27 +89,27 @@ T = {
                "Colour like the module LED: red = divisible by 2, blue = by 3, violet = both."),
     ("Density", "Only in Rhythm mode: how many steps play a note."),
     ("RHYTHM", "Off: every trigger plays a note. On: random repeating rhythm. The rhythm is part of the loop."),
-    ("GATE", "Note length. INPUT = as long as the incoming note is held (clock channels use 1/16). Or 1/64 to 1/2."),
   ]),
   ("vary", "VARY", [
     ("Skip", "Chance that a note is left out."),
     ("Octave", "Chance that a note jumps one octave. OCT switch: DOWN, BOTH or UP."),
-    ("5th", "Chance that the perfect fifth (+7 semitones) is played instead."),
     ("", "VARY is rolled fresh on every trigger, also when looping. The loop stays, but it never sounds static."),
   ]),
   ("midi", "MIDI", [
     ("INPUT", "ANY NOTE: every incoming note triggers all MIDI IN channels. C1-D#1: C1 triggers channel 1, C#1 channel 2, D1 channel 3, D#1 channel 4."),
     ("THRU", "Also pass the incoming notes through."),
-    ("RESET ON PLAY", "Restart all loops when the DAW starts playing."),
-    ("Clock Vel", "Velocity for channels on the internal clock. MIDI IN channels use the incoming velocity."),
+    ("Velocity", "Velocity of the notes. MIDI IN channels use the velocity of the incoming note."),
+    ("Humanize", "Random velocity variation per note (up to ±40), so it sounds less mechanical."),
   ]),
   ("ch", "CHANNELS 1-4", [
     ("ON", "Channel on / off. Off: the loop keeps running, but no notes are sent."),
-    ("SOURCE", "MIDI IN or an internal clock synced to the DAW tempo: 1/32, 1/16T, 1/16, 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 BAR. The clock runs while the DAW plays."),
-    ("LENGTH", "GLOBAL follows the big Length knob, or a fixed length per channel."),
+    ("RATE", "Speed of the channel, synced to the DAW tempo: 1/32, 1/16T, 1/16 (default), 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 BAR. Runs as soon as the DAW plays. Or MIDI IN: every incoming note is a trigger."),
+    ("LENGTH", "GLOBAL follows the big Length knob, or any length from 1 to 32 per channel, or INF."),
+    ("GATE", "Note length in % of the step. Fully right = legato. With MIDI IN the step is the time between the incoming notes."),
     ("Oct", "Octave offset for this channel (-3 to +3)."),
     ("MIDI OUT", "MIDI channel of this voice (default 1 to 4). Set all to the same channel to play one synth."),
-    ("Display", "The 32 stored notes: oldest left, newest right. The bright part is the loop, the frame shows the step that plays."),
+    ("Display", "The 32 stored notes: oldest left, newest right. The bright box is the loop, the frame shows the step that plays. "
+                "<b>Drag the box</b> to move the loop. <b>Drag across the steps</b> to pick your own loop (start, end and length). Double-click = back to GLOBAL."),
   ]),
   ("pitch", "HEADER", [
     ("NEW", "Roll new random notes for all four loops, right away (also when the DAW is stopped)."),
@@ -120,15 +117,15 @@ T = {
     ("Size", "Drag the bottom right corner to make the window bigger or smaller (60 % to 200 %). It always opens at 100 %."),
   ]),
  ],
- "scales": "The 27 scales",
+ "scales": "The 18 scales",
  "scales_head": ("Mode", "Flavor", "Few", "More", "All"),
  "recipes": "Recipes",
  "recipe_rows": [
    ("Bassline", "Channel 1 on 1/16, Oct -1 or -2, Minor Pentatonic, Spread 7 to 12, RHYTHM on, Density about 60 %, Length 8 or 16. "
-                "Add Octave 20 % and Skip 10 % for movement."),
+                "Add Octave 20 % and Skip 10 % for movement. Switch off channels 2 to 4."),
    ("Melody and counter-melody", "Channel 1 on 1/8, channel 2 on 1/4 with Oct +1, both on the same synth or on two synths. Different lengths per channel (e.g. 6 and 8) make the phrases shift against each other."),
-   ("One note, a lot of groove", "Custom scale with only one note (click all other keys off). Octave 40 % BOTH, 5th 15 %, Skip 20 %."),
-   ("Chords", "All four channels on MIDI IN, ANY NOTE, MIDI OUT all on one channel, COUNT = FEW. Every incoming note plays a random chord."),
+   ("One note, a lot of groove", "Custom scale with only one note (click all other keys off). Octave 40 % BOTH, Skip 20 %."),
+   ("Chords", "All four channels on the same RATE, MIDI OUT all on one channel, COUNT = FEW. Every step plays a random chord."),
  ],
  "tips": "Good to know",
  "tip_rows": [
@@ -161,13 +158,13 @@ T = {
  ],
  "quick": "Schnellstart",
  "daws": [
-   ("Bitwig", "<b>Repetitor</b> auf einer Instrumentenspur vor den Synth legen. Noten zeichnen oder spielen: Jede Note ist ein Trigger."),
+   ("Bitwig", "<b>Repetitor</b> auf einer Instrumentenspur vor den Synth legen und Play drücken. Für MIDI-Trigger RATE auf MIDI IN stellen."),
    ("Logic Pro", "Instrumentenspur: MIDI-FX-Slot &gt; Audio Units &gt; Dani Koenig &gt; Repetitor."),
-   ("Ableton Live", "1. MIDI-Spur 1: <b>Repetitor Instrument</b> laden und einen Clip mit Noten drauflegen (oder die Kanäle auf die interne Clock stellen).<br/>"
+   ("Ableton Live", "1. MIDI-Spur 1: <b>Repetitor Instrument</b> laden (läuft in 1/16, sobald du Play drückst).<br/>"
                     "2. MIDI-Spur 2 mit deinem Synth: <i>MIDI From</i> = Spur 1, darunter <i>Repetitor Instrument</i>. Monitor = <i>In</i>.<br/>"
                     "Ableton legt alle MIDI-Kanäle eines Plugins zusammen, alle vier Stimmen kommen also auf Spur 2 an. Für eine Stimme pro Spur die anderen Kanäle ausschalten."),
  ],
- "first": ("Erster Patch: eine Note pro 1/16 im Clip (oder Kanal 1 SOURCE = 1/16), Length auf <b>INF</b>, Play drücken. "
+ "first": ("Erster Patch: Repetitor vor einen Synth legen und Play drücken: Alle vier Kanäle laufen sofort in 1/16. "
            "Skala wählen, Spread einstellen. Klingt eine Phrase gut, Length auf 8 oder 16 drehen. <b>NEW</b> würfelt neue Noten."),
  "overview": "Das Fenster",
  "controls": "Bedienelemente",
@@ -176,11 +173,11 @@ T = {
     ("Root", "Grundton der Skala (C bis B)."),
     ("Octave", "Oktave des Grundtons. C3 = MIDI-Note 60 (wie in Bitwig und Ableton)."),
     ("Spread", "Wie weit sich die Noten vom Grundton entfernen dürfen: 0 bis 24 Halbtöne. 0 = nur der Grundton."),
-    ("Down/Up", "Wo der Bereich liegt. UP: ab dem Grundton nach oben. DOWN: ab dem Grundton nach unten. Mitte: um den Grundton herum."),
+    ("Down/Up", "Wo der Bereich liegt. Mitte (Grundstellung): um den Grundton herum. UP: ab dem Grundton nach oben. DOWN: ab dem Grundton nach unten."),
   ]),
   ("scale", "SCALE", [
-    ("MODE", "Dur-, Moll- oder symmetrische Skalen."),
-    ("FLAVOR", "Art der Skala. Die Namen wechseln mit MODE."),
+    ("MODE", "Dur (MAJOR) oder Moll (MINOR)."),
+    ("FLAVOR", "Major: PENTA, BLUES, BRIGHT (lydisch). Minor: PENTA, DORIAN, DARK (phrygisch)."),
     ("COUNT", "Anzahl Töne: FEW (Akkordtöne), MORE (Pentatonik), ALL (ganze Skala)."),
     ("Tastatur", "Zeigt die Töne der Skala, den Grundton in Orange. <b>Klick auf eine Taste</b> fügt einen Ton hinzu oder nimmt ihn raus: So entsteht deine eigene Skala (CUSTOM). "
                  "Der Grundton bleibt immer drin. Deine Skala wandert mit Root. Klick auf einen der drei Schalter = zurück zu den Presets."),
@@ -190,27 +187,27 @@ T = {
                "Farbe wie die LED am Modul: rot = durch 2 teilbar, blau = durch 3, violett = beides."),
     ("Density", "Nur im Rhythm-Modus: wie viele Schritte eine Note spielen."),
     ("RHYTHM", "Aus: Jeder Trigger spielt eine Note. An: zufälliger, sich wiederholender Rhythmus. Der Rhythmus ist Teil des Loops."),
-    ("GATE", "Notenlänge. INPUT = so lang wie die Eingangsnote gehalten wird (Clock-Kanäle nehmen 1/16). Oder 1/64 bis 1/2."),
   ]),
   ("vary", "VARY", [
     ("Skip", "Wie oft eine Note ausgelassen wird."),
     ("Octave", "Wie oft eine Note eine Oktave springt. Schalter OCT: DOWN, BOTH oder UP."),
-    ("5th", "Wie oft stattdessen die Quinte (+7 Halbtöne) gespielt wird."),
     ("", "VARY wird bei jedem Trigger neu gewürfelt, auch im Loop. Der Loop bleibt, klingt aber nie statisch."),
   ]),
   ("midi", "MIDI", [
     ("INPUT", "ANY NOTE: Jede Eingangsnote triggert alle MIDI-IN-Kanäle. C1-D#1: C1 triggert Kanal 1, C#1 Kanal 2, D1 Kanal 3, D#1 Kanal 4."),
     ("THRU", "Die Eingangsnoten zusätzlich durchlassen."),
-    ("RESET ON PLAY", "Alle Loops neu starten, wenn die DAW losläuft."),
-    ("Clock Vel", "Velocity für Kanäle an der internen Clock. MIDI-IN-Kanäle nehmen die Velocity der Eingangsnote."),
+    ("Velocity", "Velocity der Noten. MIDI-IN-Kanäle nehmen die Velocity der Eingangsnote."),
+    ("Humanize", "Zufällige Velocity-Schwankung pro Note (bis ±40), damit es weniger mechanisch klingt."),
   ]),
   ("ch", "KANÄLE 1-4", [
     ("ON", "Kanal an / aus. Aus: Der Loop läuft weiter, es werden aber keine Noten gesendet."),
-    ("SOURCE", "MIDI IN oder interne Clock im DAW-Tempo: 1/32, 1/16T, 1/16, 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 BAR. Die Clock läuft, wenn die DAW spielt."),
-    ("LENGTH", "GLOBAL folgt dem grossen Length-Regler, oder eine feste Länge pro Kanal."),
+    ("RATE", "Tempo des Kanals, synchron zur DAW: 1/32, 1/16T, 1/16 (Grundstellung), 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 BAR. Läuft los, sobald die DAW spielt. Oder MIDI IN: Jede Eingangsnote ist ein Trigger."),
+    ("LENGTH", "GLOBAL folgt dem grossen Length-Regler, oder jede Länge von 1 bis 32 pro Kanal, oder INF."),
+    ("GATE", "Notenlänge in % des Schritts. Ganz rechts = legato. Bei MIDI IN ist der Schritt der Abstand zwischen den Eingangsnoten."),
     ("Oct", "Oktav-Versatz für diesen Kanal (-3 bis +3)."),
     ("MIDI OUT", "MIDI-Kanal dieser Stimme (Standard 1 bis 4). Alle auf denselben Kanal = ein Synth spielt alles."),
-    ("Anzeige", "Die 32 gespeicherten Noten: älteste links, neueste rechts. Der helle Teil ist der Loop, der Rahmen zeigt den Schritt, der gerade spielt."),
+    ("Anzeige", "Die 32 gespeicherten Noten: älteste links, neueste rechts. Die helle Box ist der Loop, der Rahmen zeigt den Schritt, der gerade spielt. "
+                "<b>Box ziehen</b> = Loop verschieben. <b>Über die Schritte ziehen</b> = eigenen Loop wählen (Start, Ende, Länge). Doppelklick = zurück zu GLOBAL."),
   ]),
   ("pitch", "KOPFZEILE", [
     ("NEW", "Sofort neue Zufallsnoten für alle vier Loops würfeln (auch wenn die DAW steht)."),
@@ -218,15 +215,15 @@ T = {
     ("Grösse", "Unten rechts an der Ecke ziehen: Fenster grösser oder kleiner (60 % bis 200 %). Es öffnet immer in 100 %."),
   ]),
  ],
- "scales": "Die 27 Skalen",
+ "scales": "Die 18 Skalen",
  "scales_head": ("Mode", "Flavor", "Few", "More", "All"),
  "recipes": "Rezepte",
  "recipe_rows": [
    ("Bassline", "Kanal 1 auf 1/16, Oct -1 oder -2, Minor Pentatonic, Spread 7 bis 12, RHYTHM an, Density um 60 %, Length 8 oder 16. "
-                "Mit Octave 20 % und Skip 10 % kommt Bewegung rein."),
+                "Mit Octave 20 % und Skip 10 % kommt Bewegung rein. Kanäle 2 bis 4 ausschalten."),
    ("Melodie und Gegenmelodie", "Kanal 1 auf 1/8, Kanal 2 auf 1/4 mit Oct +1, beide auf denselben oder auf zwei Synths. Unterschiedliche Längen pro Kanal (z.B. 6 und 8) verschieben die Phrasen gegeneinander."),
-   ("Eine Note, viel Groove", "Eigene Skala mit nur einem Ton (alle anderen Tasten abwählen). Octave 40 % BOTH, 5th 15 %, Skip 20 %."),
-   ("Akkorde", "Alle vier Kanäle auf MIDI IN, ANY NOTE, MIDI OUT alle auf einen Kanal, COUNT = FEW. Jede Eingangsnote spielt einen zufälligen Akkord."),
+   ("Eine Note, viel Groove", "Eigene Skala mit nur einem Ton (alle anderen Tasten abwählen). Octave 40 % BOTH, Skip 20 %."),
+   ("Akkorde", "Alle vier Kanäle auf derselben RATE, MIDI OUT alle auf einen Kanal, COUNT = FEW. Jeder Schritt spielt einen zufälligen Akkord."),
  ],
  "tips": "Gut zu wissen",
  "tip_rows": [
@@ -337,6 +334,7 @@ def build(lang, version, shot, out):
     ]
     for r in (4, 5, 6):
         style.append(("BACKGROUND", (0, r), (-1, r), CARD))
+    style = [x for x in style if not (x[0] == "BACKGROUND" and x[1][1] == 6)]
     tb.setStyle(TableStyle(style))
     s.append(tb)
     s.append(Spacer(1, 4))

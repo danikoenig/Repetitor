@@ -104,14 +104,26 @@ public:
         auto inner = r.reduced (6.0f, 6.0f);
         const float cw = inner.getWidth() / (float) maxSteps;
 
-        // Loop-Bereich
+        // Loop-Bereich (verschiebbar)
+        const int lpos = proc.loopPos (ch);
+        const int loopEnd = maxSteps - 1 - lpos;              // Zelle ganz rechts im Loop
+        const int loopStart = loopEnd - len + 1;
         if (len > 0)
         {
-            auto loopR = inner.withLeft (inner.getRight() - cw * (float) len);
+            auto loopR = juce::Rectangle<float> (inner.getX() + cw * (float) loopStart, inner.getY(), cw * (float) len, inner.getHeight());
             g.setColour (col.withAlpha (0.08f));
             g.fillRoundedRectangle (loopR.expanded (2.0f, 3.0f), 4.0f);
             g.setColour (col.withAlpha (0.35f));
-            g.drawRoundedRectangle (loopR.expanded (2.0f, 3.0f), 4.0f, 1.0f);
+            g.drawRoundedRectangle (loopR.expanded (2.0f, 3.0f), 4.0f, dragMode == 1 || hoverLoop ? 1.8f : 1.0f);
+        }
+        if (dragMode == 2)
+        {
+            const int a = juce::jmin (selA, selB), b = juce::jmax (selA, selB);
+            auto selR = juce::Rectangle<float> (inner.getX() + cw * (float) a, inner.getY(), cw * (float) (b - a + 1), inner.getHeight());
+            g.setColour (text.withAlpha (0.10f));
+            g.fillRoundedRectangle (selR.expanded (2.0f, 3.0f), 4.0f);
+            g.setColour (text.withAlpha (0.6f));
+            g.drawRoundedRectangle (selR.expanded (2.0f, 3.0f), 4.0f, 1.2f);
         }
 
         for (int j = 0; j < maxSteps; ++j)
@@ -121,7 +133,7 @@ public:
             const float gv = v.gate[(size_t) idx].load();
             const int off = Scales::quantize (pv, spread, du, mask);
             const float h = spread > 0 ? (float) (off - lo) / (float) spread : 0.5f;
-            const bool inLoop = len == 0 ? (j == maxSteps - 1) : (j >= maxSteps - len);
+            const bool inLoop = len == 0 ? (j == maxSteps - 1) : (j >= loopStart && j <= loopEnd);
             const bool fires = ! rhythm || gv < density;
 
             auto cell = juce::Rectangle<float> (inner.getX() + cw * (float) j, inner.getY(), cw, inner.getHeight()).reduced (1.0f, 0.0f);
@@ -146,7 +158,87 @@ public:
         }
     }
 
+    // Maus: Loop-Box ziehen = verschieben, daneben ziehen = neuen Bereich waehlen, Doppelklick = zurueck
+    void mouseDown (const juce::MouseEvent& e) override
+    {
+        const int j = cellAt (e.x);
+        const int len = proc.effectiveLength (ch);
+        const int end = maxSteps - 1 - proc.loopPos (ch);
+        if (len > 0 && j >= end - len + 1 && j <= end)
+        {
+            dragMode = 1;
+            grab = j - (end - len + 1);
+            begin (ParamIDs::chPos (ch));
+        }
+        else
+        {
+            dragMode = 2;
+            selA = selB = j;
+        }
+        repaint();
+    }
+    void mouseDrag (const juce::MouseEvent& e) override
+    {
+        const int j = cellAt (e.x);
+        if (dragMode == 1)
+        {
+            const int len = proc.effectiveLength (ch);
+            if (len <= 0) return;
+            const int start = juce::jlimit (0, maxSteps - len, j - grab);
+            setValue (ParamIDs::chPos (ch), (float) (maxSteps - len - start));
+        }
+        else if (dragMode == 2)
+            selB = j;
+        repaint();
+    }
+    void mouseUp (const juce::MouseEvent&) override
+    {
+        if (dragMode == 1)
+            end (ParamIDs::chPos (ch));
+        else if (dragMode == 2)
+        {
+            const int a = juce::jmin (selA, selB), b = juce::jmax (selA, selB);
+            const int len = b - a + 1;
+            // eigene Laenge (1..32) und Position fuer diesen Kanal
+            begin (ParamIDs::chLen (ch)); setValue (ParamIDs::chLen (ch), (float) len); end (ParamIDs::chLen (ch));
+            begin (ParamIDs::chPos (ch)); setValue (ParamIDs::chPos (ch), (float) (maxSteps - 1 - b)); end (ParamIDs::chPos (ch));
+        }
+        dragMode = 0;
+        repaint();
+    }
+    void mouseDoubleClick (const juce::MouseEvent&) override
+    {
+        begin (ParamIDs::chLen (ch)); setValue (ParamIDs::chLen (ch), 0.0f); end (ParamIDs::chLen (ch));
+        begin (ParamIDs::chPos (ch)); setValue (ParamIDs::chPos (ch), 0.0f); end (ParamIDs::chPos (ch));
+        dragMode = 0;
+    }
+    void mouseMove (const juce::MouseEvent& e) override
+    {
+        const int j = cellAt (e.x);
+        const int len = proc.effectiveLength (ch);
+        const int end = maxSteps - 1 - proc.loopPos (ch);
+        const bool over = len > 0 && j >= end - len + 1 && j <= end;
+        if (over != hoverLoop) { hoverLoop = over; repaint(); }
+        setMouseCursor (over ? juce::MouseCursor::DraggingHandCursor : juce::MouseCursor::CrosshairCursor);
+    }
+    void mouseExit (const juce::MouseEvent&) override { hoverLoop = false; repaint(); }
+
 private:
     RepetitorProcessor& proc;
     int ch;
+    int dragMode = 0, grab = 0, selA = 0, selB = 0;   // 1 = verschieben, 2 = Bereich waehlen
+    bool hoverLoop = false;
+
+    int cellAt (int x) const
+    {
+        const float inner = (float) getWidth() - 12.0f;
+        return juce::jlimit (0, maxSteps - 1, (int) (((float) x - 6.0f) / (inner / (float) maxSteps)));
+    }
+    void begin (const juce::String& id) { proc.apvts.getParameter (id)->beginChangeGesture(); }
+    void end (const juce::String& id)   { proc.apvts.getParameter (id)->endChangeGesture(); }
+    void setValue (const juce::String& id, float plain)
+    {
+        auto* prm = proc.apvts.getParameter (id);
+        prm->setValueNotifyingHost (prm->convertTo0to1 (plain));
+    }
 };

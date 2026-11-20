@@ -122,18 +122,19 @@ Repetitor is a MIDI effect: MIDI notes go in, new notes come out.
   Ableton Live: load "Repetitor Instrument" on MIDI track 1. On MIDI track 2
   with your synth set "MIDI From" to track 1 > "Repetitor Instrument" and
   Monitor to "In". Ableton sends all four voices to that one track.
-- Play or draw notes: every incoming note is a trigger. Repetitor picks
+- Press play: every channel runs on its RATE (default 1/16) and picks
   a random note in the chosen scale (Root, Spread, Down/Up).
-  Or set SOURCE to a note value (1/16 ...): it runs on the DAW tempo.
+  Set RATE to MIDI IN to trigger with your own notes instead.
 - Four channels, sent on MIDI channel 1-4 (set MIDI OUT to one channel
   to play all four on one synth).
 - LENGTH fully right (INF): always new notes. Turn it down to loop the
   last 1-32 notes. Like what you hear? Keep it.
+- Drag the loop box to move it, or drag across the steps for your own loop.
 - NEW: roll new notes. INIT: all controls back to default.
 - Drag the bottom right corner to resize the window.
 - RHYTHM: random repeating rhythm, DENSITY sets how many steps play.
 - Click keys on the mini keyboard to build your own scale.
-- VARY: Skip, Octave and 5th chance for variation.
+- VARY: Skip and Octave chance for variation.
 - Full manual: Repetitor-Manual-EN.pdf
 - Your loops are saved with the project.
 
@@ -295,19 +296,20 @@ Repetitor ist ein MIDI-Effekt: MIDI-Noten rein, neue Noten raus.
   Ableton Live: "Repetitor Instrument" auf MIDI-Spur 1 laden. Auf MIDI-Spur 2
   mit deinem Synth "MIDI From" auf Spur 1 > "Repetitor Instrument" stellen und
   Monitor auf "In". Ableton schickt alle vier Stimmen auf diese eine Spur.
-- Noten spielen oder zeichnen: Jede Eingangsnote ist ein Trigger. Repetitor
-  wählt eine zufaellige Note in der Skala (Root, Spread, Down/Up).
-  Oder SOURCE auf einen Notenwert (1/16 ...) stellen: läuft im DAW-Tempo.
+- Play drücken: Jeder Kanal läuft auf seiner RATE (Grundstellung 1/16) und
+  wählt eine zufällige Note in der Skala (Root, Spread, Down/Up).
+  RATE auf MIDI IN stellen, um mit eigenen Noten zu triggern.
 - Vier Kanäle, gesendet auf MIDI-Kanal 1-4 (MIDI OUT auf einen Kanal
   stellen, um alle vier auf einem Synth zu spielen).
 - LENGTH ganz rechts (INF): immer neue Noten. Runterdrehen = die letzten
   1-32 Noten loopen. Gefällt es dir, bleibt es so.
+- Loop-Box ziehen = verschieben, über die Schritte ziehen = eigener Loop.
 - NEW: neue Noten würfeln. INIT: alle Regler auf Grundstellung.
 - Unten rechts an der Ecke ziehen = Fenster grösser / kleiner.
 - RHYTHM: zufälliger, sich wiederholender Rhythmus, DENSITY = wie viele
   Schritte spielen.
 - Tasten auf der Mini-Tastatur anklicken = eigene Skala.
-- VARY: Skip, Oktave und Quinte mit Wahrscheinlichkeit für Variation.
+- VARY: Skip und Oktave mit Wahrscheinlichkeit für Variation.
 - Ganzes Manual: Repetitor-Manual-DE.pdf
 - Deine Loops werden mit dem Projekt gespeichert.
 

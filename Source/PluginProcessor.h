@@ -21,16 +21,14 @@ namespace ParamIDs
     inline const juce::String length    { "length" };
     inline const juce::String rhythm    { "rhythm" };
     inline const juce::String density   { "density" };
-    inline const juce::String gate      { "gate" };
     inline const juce::String inMode    { "inMode" };
     inline const juce::String thru      { "thru" };
     inline const juce::String velocity  { "velocity" };
-    inline const juce::String resetPlay { "resetOnPlay" };
+    inline const juce::String humanize  { "humanize" };
     inline const juce::String custom    { "customScale" };
     inline const juce::String skip      { "skip" };
     inline const juce::String octChance { "octChance" };
     inline const juce::String octDir    { "octDir" };
-    inline const juce::String fifth     { "fifthChance" };
     inline const juce::String mask      { "customMask" };   // eigene Skala, Bits relativ zum Root
 
     // Pro Kanal (1..4)
@@ -39,18 +37,27 @@ namespace ParamIDs
     inline juce::String chLen (int c) { return "len" + juce::String (c + 1); }
     inline juce::String chOct (int c) { return "oct" + juce::String (c + 1); }
     inline juce::String chOut (int c) { return "out" + juce::String (c + 1); }
+    inline juce::String chGate (int c) { return "gate" + juce::String (c + 1); }   // Notenlaenge in % des Schritts
+    inline juce::String chPos (int c) { return "pos" + juce::String (c + 1); }     // Loop-Position: Abstand vom juengsten Schritt
 }
 
 // Length-Stufen wie am Modul (12 Stellungen), 0 = unendlich (immer neue Werte)
 inline const std::array<int, 12> lengthSteps { 1, 2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 0 };
 inline const juce::StringArray lengthNames { "1", "2", "3", "4", "5", "6", "8", "12", "16", "24", "32", "INF" };
 
-// Trigger-Quelle pro Kanal: MIDI-Eingang oder Clock synchron zum DAW-Tempo
+// Rate pro Kanal: Clock synchron zum DAW-Tempo oder MIDI-Eingang als Trigger
 inline const juce::StringArray sourceNames { "MIDI IN", "1/32", "1/16T", "1/16", "1/8T", "1/8", "1/4T", "1/4", "1/2", "1 BAR" };
 inline const std::array<double, 10> sourceBeats { 0.0, 0.125, 1.0 / 6.0, 0.25, 1.0 / 3.0, 0.5, 2.0 / 3.0, 1.0, 2.0, 4.0 };
+constexpr int defaultRate = 3;   // 1/16
 
-inline const juce::StringArray gateNames { "INPUT", "1/64", "1/32", "1/16", "1/8", "1/4", "1/2" };
-inline const std::array<double, 7> gateBeats { 0.0, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0 };
+// Laenge pro Kanal: GLOBAL, 1..32, INF
+inline juce::StringArray channelLengthNames()
+{
+    juce::StringArray a { "GLOBAL" };
+    for (int i = 1; i <= 32; ++i) a.add (juce::String (i));
+    a.add ("INF");
+    return a;
+}
 
 inline const juce::StringArray noteNames { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 inline juce::String noteName (int midi) { return midi < 0 ? juce::String ("-") : noteNames[midi % 12] + juce::String (midi / 12 - 2); } // C3 = 60 (Bitwig / Ableton)
@@ -116,6 +123,7 @@ public:
 
     // Hilfen fuer GUI und Test
     int effectiveLength (int ch) const;                      // 0 = unendlich
+    int loopPos (int ch) const;                              // Loop-Ende: Abstand vom juengsten Schritt (0 = ganz rechts)
     int noteForValue (int ch, float v) const;
     int currentMask() const;                                 // aktive Skala als 12-Bit-Maske (relativ zum Root)
     bool isCustom() const { return p (ParamIDs::custom) > 0.5f; }
@@ -135,7 +143,9 @@ private:
         int playingNote = -1;
         int playingOutCh = 1;
         juce::int64 offAt = -1;          // absolute Sample-Position fuer Note-Off, -1 = keine
-        int heldInput = -1;              // ausloesende Eingangsnote (Gate = INPUT)
+        int heldInput = -1;              // (nicht mehr benutzt)
+        juce::int64 lastTrigAt = -1;     // fuer MIDI IN: Abstand der Trigger = Schrittlaenge
+        double stepSamples = 0.0;
         juce::int64 lastClockStep = std::numeric_limits<juce::int64>::min();
     };
     std::array<Channel, numChannels> chans;

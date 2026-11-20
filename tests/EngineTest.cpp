@@ -53,7 +53,13 @@ int main()
     p.setPlayHead (&ph);
     p.prepareToPlay (48000.0, 512);
 
-    // Default: Minor Pentatonic auf C, Spread 12 nach oben, 4 Kanaele auf CH 1-4
+    // Init-Werte von v1.5: Rate 1/16, Down/Up Mitte
+    CHECK ((int) p.apvts.getRawParameterValue (ParamIDs::chSrc (0))->load() == defaultRate, "Init: Rate 1/16");
+    CHECK (std::abs (p.apvts.getRawParameterValue (ParamIDs::downUp)->load()) < 1e-6f, "Init: Down/Up in der Mitte");
+
+    // Fuer die Tests: alle Kanaele auf MIDI IN, Spread 12 nach oben
+    for (int c = 0; c < numChannels; ++c) setP (p, ParamIDs::chSrc (c), 0.0f);
+    setP (p, ParamIDs::downUp, 1.0f);
     auto ons = run (p, 512, { 0 });
     CHECK (ons.size() == 4, "ein Trigger -> 4 Noten (normalisiert auf alle Kanaele)");
     std::set<int> chs;
@@ -79,6 +85,26 @@ int main()
     CHECK (repeats, "Length 4 wiederholt sich alle 4 Schritte");
     std::vector<int> last4 (seq.end() - 4, seq.end());
     CHECK (std::vector<int> (loop.begin(), loop.begin() + 4) == last4, "Loop = die 4 juengsten Werte");
+
+    // Loop-Position: Box um 4 nach links -> die 4 Werte davor
+    {
+        setP (p, ParamIDs::chPos (0), 4.0f);
+        p.requestReset();
+        std::vector<int> moved;
+        for (int i = 0; i < 4; ++i) moved.push_back (run (p, 512, { 0 })[0].second);
+        std::vector<int> prev4 (seq.end() - 8, seq.end() - 4);
+        CHECK (moved == prev4, "Loop-Box verschoben: spielt die 4 Werte davor");
+        setP (p, ParamIDs::chPos (0), 0.0f);
+        // eigene Laenge 7 fuer Kanal 1
+        setP (p, ParamIDs::chLen (0), 7.0f);
+        p.requestReset();
+        std::vector<int> l7;
+        for (int i = 0; i < 14; ++i) l7.push_back (run (p, 512, { 0 })[0].second);
+        bool rep7 = true;
+        for (int i = 7; i < 14; ++i) rep7 &= l7[(size_t) i] == l7[(size_t) i - 7];
+        CHECK (rep7 && p.effectiveLength (0) == 7, "eigene Laenge 7 pro Kanal");
+        setP (p, ParamIDs::chLen (0), 0.0f);
+    }
 
     // Reset
     p.requestReset();
@@ -187,16 +213,14 @@ int main()
         CHECK (run (p, 512, { 0 })[0].second == 62, "nur D, Spread 0 -> D3");
         setP (p, ParamIDs::octChance, 1.0f); setP (p, ParamIDs::octDir, 2.0f);
         CHECK (run (p, 512, { 0 })[0].second == 74, "Oktave 100% UP -> D4");
-        setP (p, ParamIDs::fifth, 1.0f);
-        CHECK (run (p, 512, { 0 })[0].second == 81, "Oktave + Quinte -> A4");
-        setP (p, ParamIDs::octChance, 0.0f); setP (p, ParamIDs::fifth, 0.0f);
+        setP (p, ParamIDs::octChance, 0.0f);
         setP (p, ParamIDs::skip, 1.0f);
         CHECK (run (p, 512, { 0 }).empty(), "Skip 100% -> keine Noten");
         setP (p, ParamIDs::skip, 0.3f);
         int played = 0;
         for (int i = 0; i < 200; ++i) played += (int) run (p, 512, { 0 }).size();
         CHECK (played > 450 && played < 670, "Skip 30% -> ca. 70% gespielt (" + juce::String (played) + "/800)");
-        setP (p, ParamIDs::skip, 0.15f); setP (p, ParamIDs::octChance, 0.3f); setP (p, ParamIDs::fifth, 0.2f);
+        setP (p, ParamIDs::skip, 0.15f); setP (p, ParamIDs::octChance, 0.3f);
         setP (p, ParamIDs::spread, 12.0f);
         p.toggleKey (9);   // A dazu, fuer Screenshot
     }

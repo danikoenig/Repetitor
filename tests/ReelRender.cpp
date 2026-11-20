@@ -411,7 +411,7 @@ int ReelAccess::run (int argc, char** argv)
     setParam (p, ParamIDs::flavor, 0.0f);
     setParam (p, ParamIDs::count, dramatic ? 2.0f : 1.0f);   // dramatisch: ALL (C Moll)
     setParam (p, ParamIDs::length, 11.0f);       // INF
-    setParam (p, ParamIDs::gate, 6.0f);          // 1/2
+    for (int c = 0; c < numChannels; ++c) setParam (p, ParamIDs::chGate (c), 1.0f);   // lange Noten
     setParam (p, ParamIDs::density, 0.5f);
     // Kanal 1 Sub 1/2 tief, Kanal 2 Bell 1/8, Kanal 3 Glass 1/4 hoch, Kanal 4 Pad 1 Bar
     const float src[] { 8.0f, 5.0f, 7.0f, 9.0f };
@@ -434,7 +434,7 @@ int ReelAccess::run (int argc, char** argv)
         setParam (p, ParamIDs::flavor, 0.0f);
         setParam (p, ParamIDs::count, 0.0f);
         setParam (p, ParamIDs::downUp, 0.4f);
-        setParam (p, ParamIDs::gate, 3.0f);          // 1/16
+        for (int c = 0; c < numChannels; ++c) setParam (p, ParamIDs::chGate (c), 0.6f);
         oct[0] = 0.0f; oct[1] = 1.0f; oct[2] = 0.0f; oct[3] = 1.0f;
     }
     if (jazz)
@@ -445,7 +445,7 @@ int ReelAccess::run (int argc, char** argv)
         setParam (p, ParamIDs::flavor, 1.0f);        // DORIAN
         setParam (p, ParamIDs::count, 0.0f);         // FEW = Minor 7
         setParam (p, ParamIDs::downUp, 0.6f);
-        setParam (p, ParamIDs::gate, 5.0f);          // 1/4
+        for (int c = 0; c < numChannels; ++c) setParam (p, ParamIDs::chGate (c), 0.9f);
         oct[0] = 0.0f; oct[1] = 1.0f; oct[2] = 2.0f; oct[3] = 1.0f;
     }
     for (int c = 0; c < numChannels; ++c)
@@ -520,14 +520,13 @@ int ReelAccess::run (int argc, char** argv)
         knobDrag (ed.kDensity.slider, ParamIDs::density, lbar (18.6), lbar (19.4), 0.5f, 0.72f, -30.0f);
         // DRIFT (Bar 21-26)
         knobDrag (ed.kOctChance.slider, ParamIDs::octChance, lbar (21.8), lbar (22.5), 0.0f, 0.35f, -40.0f);
-        knobDrag (ed.kFifth.slider, ParamIDs::fifth, lbar (23.2), lbar (23.8), 0.0f, 0.25f, -34.0f);
         knobDrag (ed.kSkip.slider, ParamIDs::skip, lbar (24.4), lbar (24.9), 0.0f, 0.15f, -26.0f);
         // POLYMETER (Bar 26-33): eigene Laenge pro Kanal
         auto& r3 = *ed.rows[2];
         auto& r4 = *ed.rows[3];
         click (lbar (27.2), centre (in (ed, r3.lenBox)), [&] { setParam (p, ParamIDs::chLen (2), 6.0f); });    // 6
-        click (lbar (28.8), centre (in (ed, r4.lenBox)), [&] { setParam (p, ParamIDs::chLen (3), 8.0f); });    // 12
-        click (lbar (30.4), centre (in (ed, ed.rows[1]->lenBox)), [&] { setParam (p, ParamIDs::chLen (1), 9.0f); });  // 16
+        click (lbar (28.8), centre (in (ed, r4.lenBox)), [&] { setParam (p, ParamIDs::chLen (3), 12.0f); });   // 12
+        click (lbar (30.4), centre (in (ed, ed.rows[1]->lenBox)), [&] { setParam (p, ParamIDs::chLen (1), 16.0f); });  // 16
         if (club)
             click (lbar (28.0), centre (in (ed, ed.rows[3]->onButton)), [&] { setParam (p, ParamIDs::chOn (3), 1.0f); });
         kf (lbar (31.5), { 1000.0f, 330.0f });
@@ -566,7 +565,6 @@ int ReelAccess::run (int argc, char** argv)
 
     // Szene 5 (Bar 8.5-10): Octave + 5th
     knobDrag (ed.kOctChance.slider, ParamIDs::octChance, bar (8.7), bar (9.15), 0.0f, 0.35f, -40.0f);
-    knobDrag (ed.kFifth.slider, ParamIDs::fifth, bar (9.35), bar (9.75), 0.0f, 0.25f, -34.0f);
 
     }
 

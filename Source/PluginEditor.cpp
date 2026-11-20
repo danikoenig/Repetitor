@@ -67,10 +67,10 @@ ChannelRow::ChannelRow (RepetitorProcessor& p, int channel)
     onAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (a, ParamIDs::chOn (ch), onButton);
 
     srcBox.addItemList (sourceNames, 1);
-    srcBox.setTooltip ("MIDI IN: every incoming note is a trigger. Note values: internal clock synced to the DAW tempo.");
-    lenBox.addItem ("GLOBAL", 1);
-    lenBox.addItemList (lengthNames, 2);
-    lenBox.setTooltip ("Loop length for this channel. GLOBAL follows the big Length knob. INF = always new notes.");
+    srcBox.setTooltip ("Speed of this channel: a note value synced to the DAW tempo, or MIDI IN (every incoming note is a trigger).");
+    lenBox.addItemList (channelLengthNames(), 1);
+    lenBox.setTooltip ("Loop length for this channel. GLOBAL follows the big Length knob. INF = always new notes. "
+                       "Tip: drag over the steps to pick your own loop, drag the box to move it, double-click to go back to GLOBAL.");
     juce::StringArray outs;
     for (int i = 1; i <= 16; ++i) outs.add ("CH " + juce::String (i));
     outBox.addItemList (outs, 1);
@@ -84,6 +84,8 @@ ChannelRow::ChannelRow (RepetitorProcessor& p, int channel)
     lenAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, ParamIDs::chLen (ch), lenBox);
     outAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, ParamIDs::chOut (ch), outBox);
 
+    kGate.setup (*this, a, ParamIDs::chGate (ch), "Gate", col, true);
+    kGate.slider.setTooltip ("Note length in % of the step. Fully right = legato.");
     kOct.setup (*this, a, ParamIDs::chOct (ch), "Oct", col, true);
     kOct.slider.getProperties().set ("bipolar", true);
     kOct.slider.setTooltip ("Octave offset for this channel");
@@ -106,7 +108,7 @@ void ChannelRow::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (20.0f, juce::Font::bold));
     g.drawText (juce::String (ch + 1), badgeArea, juce::Justification::centred);
 
-    smallLabel (g, "SOURCE", srcBox.getBounds().withY (12).withHeight (14));
+    smallLabel (g, "RATE", srcBox.getBounds().withY (12).withHeight (14));
     smallLabel (g, "LENGTH", lenBox.getBounds().withY (12).withHeight (14));
     smallLabel (g, "MIDI OUT", outBox.getBounds().withY (12).withHeight (14));
 
@@ -147,6 +149,8 @@ void ChannelRow::resized()
     };
     combo (srcBox, 98);
     combo (lenBox, 86);
+    kGate.setBounds (r.removeFromLeft (56).withTrimmedTop (-2), 14);
+    r.removeFromLeft (4);
     kOct.setBounds (r.removeFromLeft (56).withTrimmedTop (-2), 14);
     r.removeFromLeft (8);
     combo (outBox, 82);
@@ -198,15 +202,15 @@ RepetitorEditor::RepetitorEditor (RepetitorProcessor& p)
     kDownUp.slider.setTooltip ("Up: from the root upwards. Down: from the root downwards. Centre: around the root.");
 
     // Scale
-    famSwitch   = std::make_unique<ChoiceSwitch> (*a.getParameter (ParamIDs::family), juce::StringArray { "MAJ", "MIN", "SYM" }, scaleCol);
+    famSwitch   = std::make_unique<ChoiceSwitch> (*a.getParameter (ParamIDs::family), juce::StringArray { "MAJOR", "MINOR" }, scaleCol);
     flavSwitch  = std::make_unique<ChoiceSwitch> (*a.getParameter (ParamIDs::flavor), juce::StringArray { "-", "-", "-" }, scaleCol);
     countSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter (ParamIDs::count),  juce::StringArray { "FEW", "MORE", "ALL" }, scaleCol);
     for (auto* s : { famSwitch.get(), flavSwitch.get(), countSwitch.get() })
         addAndMakeVisible (s);
     for (auto* s : { famSwitch.get(), flavSwitch.get(), countSwitch.get() })
         s->onClick = [this] { processor.usePresetScale(); };
-    famSwitch->setTooltip ("Major, minor or symmetric scales");
-    flavSwitch->setTooltip ("Style of the scale");
+    famSwitch->setTooltip ("Major or minor");
+    flavSwitch->setTooltip ("Major: Penta, Blues, Bright (lydian). Minor: Penta, Dorian, Dark (phrygian).");
     countSwitch->setTooltip ("Number of notes: few (chord tones), more (pentatonic), all");
 
     // Loop
@@ -224,19 +228,12 @@ RepetitorEditor::RepetitorEditor (RepetitorProcessor& p)
     addAndMakeVisible (rhythmButton);
     rhythmAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (a, ParamIDs::rhythm, rhythmButton);
 
-    gateBox.addItemList (gateNames, 1);
-    gateBox.getProperties().set ("accent", loopCol.toString());
-    gateBox.setTooltip ("Note length. INPUT: as long as the incoming note is held (Clock channels use 1/16).");
-    addAndMakeVisible (gateBox);
-    gateAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, ParamIDs::gate, gateBox);
 
     // Vary
     kSkip.setup      (*this, a, ParamIDs::skip,      "Skip",   varyCol, true);
     kOctChance.setup (*this, a, ParamIDs::octChance, "Octave", varyCol, true);
-    kFifth.setup     (*this, a, ParamIDs::fifth,     "5th",    varyCol, true);
     kSkip.slider.setTooltip ("Chance that a note is left out. Rolled fresh on every trigger, also when looping.");
     kOctChance.slider.setTooltip ("Chance that a note jumps one octave (direction below). Rolled fresh on every trigger.");
-    kFifth.slider.setTooltip ("Chance that a perfect fifth (+7 semitones) is played instead. Rolled fresh on every trigger.");
     octDirSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter (ParamIDs::octDir), juce::StringArray { "DOWN", "BOTH", "UP" }, varyCol);
     octDirSwitch->setTooltip ("Direction of the octave jumps");
     addAndMakeVisible (*octDirSwitch);
@@ -248,19 +245,16 @@ RepetitorEditor::RepetitorEditor (RepetitorProcessor& p)
     addAndMakeVisible (inBox);
     inAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, ParamIDs::inMode, inBox);
 
-    for (auto* b : { &thruButton, &resetPlayButton })
-    {
-        b->getProperties().set ("style", "labelled");
-        b->getProperties().set ("accent", midiCol.toString());
-        addAndMakeVisible (b);
-    }
+    thruButton.getProperties().set ("style", "labelled");
+    thruButton.getProperties().set ("accent", midiCol.toString());
+    addAndMakeVisible (thruButton);
     thruButton.setTooltip ("Also pass the incoming notes through");
-    resetPlayButton.setTooltip ("Restart all loops when the DAW starts playing");
     thruAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (a, ParamIDs::thru, thruButton);
-    resetPlayAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (a, ParamIDs::resetPlay, resetPlayButton);
 
-    kVel.setup (*this, a, ParamIDs::velocity, "Clock Vel", midiCol, true);
-    kVel.slider.setTooltip ("Velocity for channels running on the internal clock (MIDI IN uses the incoming velocity)");
+    kVel.setup (*this, a, ParamIDs::velocity, "Velocity", midiCol, true);
+    kVel.slider.setTooltip ("Velocity of the notes (MIDI IN channels use the velocity of the incoming note)");
+    kHuman.setup (*this, a, ParamIDs::humanize, "Humanize", midiCol, true);
+    kHuman.slider.setTooltip ("Random velocity variation per note, so it sounds less mechanical");
 
     for (int c = 0; c < numChannels; ++c)
     {
@@ -327,7 +321,6 @@ void RepetitorEditor::paint (juce::Graphics& g)
     smallLabel (g, "MODE",   famSwitch->getBounds().withX (secScale.getX() + 14).withWidth (60));
     smallLabel (g, "FLAVOR", flavSwitch->getBounds().withX (secScale.getX() + 14).withWidth (60));
     smallLabel (g, "COUNT",  countSwitch->getBounds().withX (secScale.getX() + 14).withWidth (60));
-    smallLabel (g, "GATE",   gateLabel);
     smallLabel (g, "INPUT",  inLabel);
 
     // Skalenname + Mini-Keyboard mit den Skalentoenen
@@ -344,32 +337,55 @@ void RepetitorEditor::paint (juce::Graphics& g)
 
     bool inScale[12] {};
     for (int d = 0; d < 12; ++d) if (mask & (1 << d)) inScale[(root + d) % 12] = true;
-    const bool black[12] { false, true, false, true, false, false, true, false, true, false, true, false };
-    const float kw = (float) info.getWidth() / 12.0f;
-    for (int i = 0; i < 12; ++i)
+    for (int i : { 0, 2, 4, 5, 7, 9, 11, 1, 3, 6, 8, 10 })   // erst weisse, dann schwarze Tasten
     {
-        auto k = juce::Rectangle<float> ((float) info.getX() + kw * (float) i, (float) info.getY(), kw, (float) info.getHeight()).reduced (1.5f, 0.0f);
+        const auto k = keyRect (i);
+        const bool blk = isBlackKey (i);
         const bool isRoot = i == root;
-        g.setColour (inScale[i] ? (isRoot ? accent : scaleCol.withAlpha (black[i] ? 0.65f : 0.9f))
-                                : (black[i] ? inset : knobTrack));
-        g.fillRoundedRectangle (k, 3.0f);
+        juce::Colour fill;
+        if (blk) fill = inScale[i] ? (isRoot ? accent.darker (0.15f) : scaleCol.darker (0.35f)) : juce::Colour (0xff121316);
+        else     fill = inScale[i] ? (isRoot ? accent : scaleCol) : juce::Colour (0xffdfe1e6);
+        g.setColour (fill);
+        g.fillRoundedRectangle (k, blk ? 2.5f : 3.0f);
+        g.setColour (blk ? juce::Colour (0xff3a3c44) : juce::Colour (0xff8d9099));
+        g.drawRoundedRectangle (k.reduced (0.5f), blk ? 2.5f : 3.0f, 1.0f);
         if (i == hoverKey && ! isRoot)
         {
-            g.setColour (text.withAlpha (0.6f));
-            g.drawRoundedRectangle (k, 3.0f, 1.2f);
+            g.setColour (blk ? text : bgBottom);
+            g.drawRoundedRectangle (k.reduced (1.5f), 2.5f, 1.6f);
         }
-        g.setColour (inScale[i] ? bgBottom : textDim.withAlpha (0.7f));
-        g.setFont (juce::FontOptions (8.5f, juce::Font::bold));
-        g.drawText (noteNames[i], k.toNearestInt(), juce::Justification::centredBottom);
+        if (! blk)
+        {
+            g.setColour (inScale[i] ? bgBottom : juce::Colour (0xff6b6f78));
+            g.setFont (juce::FontOptions (8.5f, juce::Font::bold));
+            g.drawText (noteNames[i], k.toNearestInt().withTrimmedBottom (1), juce::Justification::centredBottom);
+        }
     }
+}
+
+bool RepetitorEditor::isBlackKey (int i) { return i == 1 || i == 3 || i == 6 || i == 8 || i == 10; }
+
+juce::Rectangle<float> RepetitorEditor::keyRect (int i) const
+{
+    // Kleines Klavier: 7 weisse Tasten ueber die ganze Breite, schwarze Tasten oben drauf
+    const auto keys = scaleInfo.withTrimmedTop (23).toFloat();
+    const float ww = keys.getWidth() / 7.0f;
+    static const int whiteIdx[12] { 0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6 };
+    if (! isBlackKey (i))
+        return { keys.getX() + ww * (float) whiteIdx[i] + 1.0f, keys.getY(), ww - 2.0f, keys.getHeight() };
+    const float bw = ww * 0.58f;
+    const float x = keys.getX() + ww * (float) (whiteIdx[i] + 1) - bw * 0.5f;
+    return { x, keys.getY(), bw, keys.getHeight() * 0.6f };
 }
 
 int RepetitorEditor::keyAt (juce::Point<int> pos) const
 {
-    auto keys = scaleInfo.withTrimmedTop (23);
-    if (! keys.contains (pos))
-        return -1;
-    return juce::jlimit (0, 11, (int) ((float) (pos.x - keys.getX()) / ((float) keys.getWidth() / 12.0f)));
+    const auto pt = pos.toFloat();
+    for (int i : { 1, 3, 6, 8, 10 })
+        if (keyRect (i).contains (pt)) return i;
+    for (int i : { 0, 2, 4, 5, 7, 9, 11 })
+        if (keyRect (i).contains (pt)) return i;
+    return -1;
 }
 
 void RepetitorEditor::mouseDown (const juce::MouseEvent& e)
@@ -423,30 +439,26 @@ void RepetitorEditor::resized()
     }
     // Scale: 3 Schalter + Anzeige
     {
-        auto a = secScale.reduced (14, 0).withTrimmedTop (36);
+        auto a = secScale.reduced (14, 0).withTrimmedTop (32);
         for (auto* s : { famSwitch.get(), flavSwitch.get(), countSwitch.get() })
         {
-            s->setBounds (a.removeFromTop (26).withTrimmedLeft (62));
-            a.removeFromTop (6);
+            s->setBounds (a.removeFromTop (22).withTrimmedLeft (62));
+            a.removeFromTop (4);
         }
-        a.removeFromTop (4);
-        scaleInfo = a.removeFromTop (54);
+        a.removeFromTop (2);
+        scaleInfo = a.removeFromTop (70);
     }
     // Loop
     {
         auto a = secLoop.reduced (12, 0).withTrimmedTop (36);
-        Knob::layoutRow (a.removeFromTop (88), { &kLength, &kDensity });
-        a.removeFromTop (4);
-        rhythmButton.setBounds (a.removeFromTop (24));
-        a.removeFromTop (6);
-        auto row = a.removeFromTop (26);
-        gateLabel = row.removeFromLeft (38);
-        gateBox.setBounds (row);
+        Knob::layoutRow (a.removeFromTop (98), { &kLength, &kDensity });
+        a.removeFromTop (14);
+        rhythmButton.setBounds (a.removeFromTop (26));
     }
     // Vary
     {
         auto a = secVary.reduced (12, 0).withTrimmedTop (36);
-        Knob::layoutRow (a.removeFromTop (88), { &kSkip, &kOctChance, &kFifth }, 14);
+        Knob::layoutRow (a.removeFromTop (88), { &kSkip, &kOctChance }, 14);
         a.removeFromTop (34);
         auto row = a.removeFromTop (26);
         octDirLabel = row.removeFromLeft (30);
@@ -459,12 +471,9 @@ void RepetitorEditor::resized()
         inLabel = row.removeFromLeft (38);
         inBox.setBounds (row);
         a.removeFromTop (8);
-        auto bottom = a.removeFromTop (110);
-        auto pills = bottom.removeFromLeft (bottom.getWidth() - 62);
-        thruButton.setBounds (pills.removeFromTop (24));
-        pills.removeFromTop (8);
-        resetPlayButton.setBounds (pills.removeFromTop (24));
-        kVel.setBounds (bottom.withTrimmedLeft (6).withHeight (82), 14);
+        thruButton.setBounds (a.removeFromTop (24));
+        a.removeFromTop (4);
+        Knob::layoutRow (a.removeFromTop (86), { &kVel, &kHuman }, 14);
     }
 
     r.removeFromTop (rowGap + 2);
