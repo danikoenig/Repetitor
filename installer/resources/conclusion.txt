@@ -1,0 +1,18 @@
+Done!
+
+Restart your DAW and rescan plugins. Then search for "Repetitor"
+in your plugin list and put it before an instrument.
+Logic Pro: the plugin is under MIDI FX > Audio Units > Dani Koenig.
+
+If you installed Repetitor earlier with the Terminal commands, delete the
+old copy in your user folder so it doesn't show up twice:
+~/Library/Audio/Plug-Ins/VST3/Repetitor.vst3
+
+---
+
+Fertig! Starte deine DAW neu und lass die Plugins neu scannen.
+Logic Pro: MIDI FX > Audio Units > Dani Koenig.
+Falls du Repetitor früher per Terminal installiert hast, lösche die alte
+Kopie in deinem Benutzerordner (siehe oben), damit es nicht doppelt erscheint.
+
+https://github.com/danikoenig/Repetitor
