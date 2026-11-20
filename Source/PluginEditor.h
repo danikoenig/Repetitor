@@ -52,7 +52,9 @@ private:
     RepLookAndFeel lnf;
     juce::TooltipWindow tooltips { this, 700 };
 
-    juce::TextButton newButton { "NEW" }, resetButton { "RESET" };
+    juce::TextButton newButton { "NEW" }, resetButton { "INIT" };
+    float scale = 1.0f;
+    void repaintArea (juce::Rectangle<int> r) { repaint (r.toFloat().transformedBy (juce::AffineTransform::scale (scale)).getSmallestIntegerContainer().expanded (2)); }
 
     // Pitch
     Knob kRoot, kOctave, kSpread, kDownUp;

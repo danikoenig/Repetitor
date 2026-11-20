@@ -154,6 +154,30 @@ int RepetitorProcessor::noteForValue (int ch, float v) const
     return juce::jlimit (0, 127, base + (int) p (ParamIDs::chOct (ch)) * 12 + off);
 }
 
+void RepetitorProcessor::requestNew()
+{
+    // Direkt im Message-Thread: Werte sind atomar, funktioniert auch, wenn die DAW gerade nichts verarbeitet
+    for (auto& v : view)
+        for (int i = 0; i < maxSteps; ++i)
+        {
+            v.pitch[(size_t) i].store (guiRng.nextFloat());
+            v.gate[(size_t) i].store (guiRng.nextFloat());
+        }
+    resetRequest.store (true);
+}
+
+void RepetitorProcessor::initAll()
+{
+    for (auto* prm : getParameters())
+        if (auto* r = dynamic_cast<juce::RangedAudioParameter*> (prm))
+        {
+            r->beginChangeGesture();
+            r->setValueNotifyingHost (r->getDefaultValue());
+            r->endChangeGesture();
+        }
+    resetRequest.store (true);
+}
+
 void RepetitorProcessor::regenerate()
 {
     for (int ch = 0; ch < numChannels; ++ch)
@@ -408,6 +432,7 @@ void RepetitorProcessor::getStateInformation (juce::MemoryBlock& dest)
         c.setProperty ("p", ps.trim(), nullptr);
         c.setProperty ("g", gs.trim(), nullptr);
         c.setProperty ("h", view[(size_t) ch].head.load(), nullptr);
+        loops.setProperty ("uiScale", uiScale.load(), nullptr);
         loops.appendChild (c, nullptr);
     }
     state.removeChild (state.getChildWithName ("Loops"), nullptr);
@@ -427,6 +452,7 @@ void RepetitorProcessor::setStateInformation (const void* data, int size)
 
     if (auto loops = state.getChildWithName ("Loops"); loops.isValid())
     {
+        uiScale.store (juce::jlimit (0.6f, 2.0f, (float) loops.getProperty ("uiScale", 1.0f)));
         for (int ch = 0; ch < numChannels && ch < loops.getNumChildren(); ++ch)
         {
             auto c = loops.getChild (ch);

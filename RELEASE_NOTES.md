@@ -2,7 +2,13 @@ Free quad random quantized note generator for macOS (Apple Silicon), VST3 and Au
 
 **Download `Repetitor-Installer.pkg`** and double-click it. macOS blocks it the first time: open System Settings > Privacy & Security and click "Open Anyway". Full guide: see INSTALL.txt in the ZIP or in the repository.
 
-### New in v1.0.0
+### New in v1.1.0
+- **Resizable window**: drag the bottom right corner (60 % to 200 %). Opens at 100 %, like the other plugins
+- **NEW** now rolls new notes right away, also when the DAW is stopped
+- **INIT** (was RESET): sets every control back to its default
+- Header in the same style as One Shooter, Quad Shooter and Drift Station
+
+### v1.0.0
 - **Custom scale**: click the keys of the mini keyboard to build your own scale (root always stays in, moves with Root)
 - **Vary**: Skip, Octave (down / both / up) and 5th chance, rolled fresh on every trigger
 - **Repetitor Instrument** (was "Repetitor Inst") for Ableton Live: instrument with MIDI output. The installer removes the old "Repetitor Inst"
@@ -15,7 +21,7 @@ Free quad random quantized note generator for macOS (Apple Silicon), VST3 and Au
 - Length: INF = always new notes, or loop the most recent 1-32 notes (global or per channel)
 - Rhythm mode with Density, Gate (INPUT or 1/64 to 1/2)
 - Custom scale, Vary (Skip, Octave, 5th)
-- NEW, RESET, reset on DAW start, loops saved with the project
+- NEW, INIT, loop restart on DAW start, loops saved with the project
 
 Bitwig: put Repetitor before an instrument. Logic Pro: MIDI FX. Ableton Live: Repetitor Instrument on its own track, other tracks take it as "MIDI From".
 

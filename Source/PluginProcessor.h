@@ -95,8 +95,11 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
     // Bedienung aus dem GUI
-    void requestReset()  { resetRequest.store (true); }
-    void requestNew()    { newRequest.store (true); }
+    void requestReset()  { resetRequest.store (true); }     // Loops beim naechsten Trigger ab Schritt 1
+    void requestNew();                                       // sofort neue Zufallsnoten (Message-Thread)
+    void initAll();                                          // INIT: alle Parameter auf Grundstellung
+
+    std::atomic<float> uiScale { 1.0f };                     // Fenstergroesse (wird im Projekt gespeichert)
 
     // Anzeige (vom GUI gelesen)
     struct ChannelView
@@ -153,6 +156,7 @@ private:
     bool wasPlaying = false;
     double lastPpqEnd = -1.0;
     std::atomic<bool> resetRequest { false }, newRequest { false };
+    juce::Random guiRng;
 
     void trigger (int ch, int offset, int velocity, int inNote, double bpm, juce::MidiBuffer& out);
     void noteOff (int ch, int offset, juce::MidiBuffer& out);

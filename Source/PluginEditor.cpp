@@ -181,8 +181,8 @@ RepetitorEditor::RepetitorEditor (RepetitorProcessor& p)
     newButton.getProperties().set ("primary", true);
     newButton.setTooltip ("Roll new random values for all four loops");
     newButton.onClick = [this] { processor.requestNew(); };
-    resetButton.setTooltip ("Restart all loops from their first step on the next trigger");
-    resetButton.onClick = [this] { processor.requestReset(); };
+    resetButton.setTooltip ("INIT: set every control back to its default (scale, spread, length, vary, channels ...). Your notes stay, press NEW for new ones.");
+    resetButton.onClick = [this] { processor.initAll(); };
     addAndMakeVisible (newButton);
     addAndMakeVisible (resetButton);
 
@@ -269,7 +269,11 @@ RepetitorEditor::RepetitorEditor (RepetitorProcessor& p)
     }
 
     timerCallback();
-    setSize (W, H);
+    setResizable (true, true);
+    setResizeLimits (W * 6 / 10, H * 6 / 10, W * 2, H * 2);
+    if (auto* c = getConstrainer())
+        c->setFixedAspectRatio ((double) W / (double) H);
+    setSize (W, H);   // oeffnet immer in 100 % (wie One Shooter, Quad Shooter, Drift Station)
     startTimerHz (30);
 }
 
@@ -288,17 +292,29 @@ void RepetitorEditor::updateLengthColour()
 
 void RepetitorEditor::paint (juce::Graphics& g)
 {
-    g.setGradientFill (juce::ColourGradient (bgTop, 0.0f, 0.0f, bgBottom, 0.0f, (float) getHeight(), false));
+    g.addTransform (juce::AffineTransform::scale (scale));
+    g.setGradientFill (juce::ColourGradient (bgTop, 0.0f, 0.0f, bgBottom, 0.0f, (float) H, false));
     g.fillAll();
 
-    // Header
-    g.setGradientFill (juce::ColourGradient (accent2, (float) margin, 0.0f, accent, (float) margin + 160.0f, 0.0f, false));
-    g.setFont (juce::FontOptions (24.0f, juce::Font::bold));
-    g.drawText ("REPETITOR", margin + 2, 10, 220, 30, juce::Justification::centredLeft);
-    g.setColour (textDim);
-    g.setFont (juce::FontOptions (11.5f));
-    g.drawText (juce::String (REPETITOR_INSTRUMENT ? "INSTRUMENT  /  " : "") + "quad random quantized note generator  /  by Dani Koenig",
-                margin + 172, 14, 460, 24, juce::Justification::centredLeft);
+    // Header wie bei One Shooter, Quad Shooter und Drift Station: Logo, Titel 19 pt, "by Dani Koenig · Version"
+    {
+        const auto header = juce::Rectangle<int> (margin, 6, 400, 40);
+        const float x0 = (float) header.getX() + 1.0f, base = (float) header.getY() + 30.0f;
+        const float hs[] { 0.55f, 1.0f, 0.4f, 0.75f };
+        for (int c = 0; c < numChannels; ++c)
+        {
+            g.setColour (slot (c));
+            const float h = 20.0f * hs[c];
+            g.fillRoundedRectangle (x0 + (float) c * 6.5f, base - h, 4.5f, h, 1.5f);
+        }
+        g.setColour (text);
+        g.setFont (juce::FontOptions (19.0f, juce::Font::bold));
+        g.drawText (REPETITOR_INSTRUMENT ? "REPETITOR INSTRUMENT" : "REPETITOR", header.getX() + 34, header.getY() + 4, 300, 22, juce::Justification::centredLeft);
+        g.setColour (textDim);
+        g.setFont (juce::FontOptions (11.0f));
+        g.drawText (juce::String::fromUTF8 ("by Dani Koenig  \xc2\xb7  v") + JucePlugin_VersionString,
+                    header.getX() + 34, header.getY() + 24, 220, 14, juce::Justification::centredLeft);
+    }
 
     drawCard (g, secPitch, "PITCH", pitchCol);
     drawCard (g, secScale, "SCALE", scaleCol);
@@ -358,33 +374,36 @@ int RepetitorEditor::keyAt (juce::Point<int> pos) const
 
 void RepetitorEditor::mouseDown (const juce::MouseEvent& e)
 {
-    const int k = keyAt (e.getPosition());
+    const int k = keyAt ((e.position / scale).toInt());
     if (k >= 0)
     {
         processor.toggleKey (k);
-        repaint (scaleInfo.expanded (4));
+        repaintArea (scaleInfo.expanded (4));
     }
 }
 
 void RepetitorEditor::mouseMove (const juce::MouseEvent& e)
 {
-    const int k = keyAt (e.getPosition());
+    const int k = keyAt ((e.position / scale).toInt());
     if (k != hoverKey)
     {
         hoverKey = k;
         setMouseCursor (k >= 0 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
-        repaint (scaleInfo.expanded (4));
+        repaintArea (scaleInfo.expanded (4));
     }
 }
 
 void RepetitorEditor::mouseExit (const juce::MouseEvent&)
 {
-    if (hoverKey >= 0) { hoverKey = -1; repaint (scaleInfo.expanded (4)); }
+    if (hoverKey >= 0) { hoverKey = -1; repaintArea (scaleInfo.expanded (4)); }
 }
 
 void RepetitorEditor::resized()
 {
-    auto r = getLocalBounds().reduced (margin, 0);
+    // Alles wird im Grundraster 1200 x 676 angeordnet und dann proportional skaliert
+    scale = juce::jmax (0.3f, (float) getWidth() / (float) W);
+    processor.uiScale.store (scale);
+    auto r = juce::Rectangle<int> (0, 0, W, H).reduced (margin, 0);
     auto header = r.removeFromTop (headerH);
     newButton.setBounds (header.removeFromRight (84).withSizeKeepingCentre (84, 30));
     header.removeFromRight (8);
@@ -454,6 +473,10 @@ void RepetitorEditor::resized()
         row->setBounds (r.removeFromTop (rowH));
         r.removeFromTop (rowGap);
     }
+
+    for (auto* c : getChildren())
+        if (c != &tooltips)
+            c->setTransform (juce::AffineTransform::scale (scale));
 }
 
 void RepetitorEditor::timerCallback()
@@ -472,7 +495,7 @@ void RepetitorEditor::timerCallback()
     {
         shownScale = sIdx;
         shownRoot = root;
-        repaint (scaleInfo.expanded (4));
+        repaintArea (scaleInfo.expanded (4));
     }
     const int len = (int) a.getRawParameterValue (ParamIDs::length)->load();
     if (len != shownLen)

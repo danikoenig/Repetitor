@@ -22,7 +22,8 @@ When you hear something you like, turn Length down to loop the most recent notes
 - **Rhythm mode**: random repeating rhythm instead of pass-through, Density sets how many steps play. The rhythm is part of the loop
 - **Vary**: Skip (leave notes out), Octave (jump down / both / up) and 5th, each with a chance. Rolled fresh on every trigger, so the loop never sounds static
 - **Gate**: INPUT (as long as the incoming note) or 1/64 to 1/2
-- **NEW** rolls new notes, **RESET** restarts all loops on the next trigger, optional reset when the DAW starts
+- **NEW** rolls new notes right away, **INIT** sets every control back to its default, optional loop restart when the DAW starts
+- **Resizable window**: drag the bottom right corner (60 % to 200 %), opens at 100 %
 - Scale, Root and Spread changes are applied live to the loop
 - Loops are saved with the project
 

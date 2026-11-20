@@ -115,8 +115,9 @@ T = {
     ("Display", "The 32 stored notes: oldest left, newest right. The bright part is the loop, the frame shows the step that plays."),
   ]),
   ("pitch", "HEADER", [
-    ("NEW", "Roll new random notes for all four loops."),
-    ("RESET", "Restart all loops from their first step on the next trigger."),
+    ("NEW", "Roll new random notes for all four loops, right away (also when the DAW is stopped)."),
+    ("INIT", "Set every control back to its default (scale, spread, length, vary, channels ...). Your notes stay, press NEW for new ones."),
+    ("Size", "Drag the bottom right corner to make the window bigger or smaller (60 % to 200 %). It always opens at 100 %."),
   ]),
  ],
  "scales": "The 27 scales",
@@ -212,8 +213,9 @@ T = {
     ("Anzeige", "Die 32 gespeicherten Noten: älteste links, neueste rechts. Der helle Teil ist der Loop, der Rahmen zeigt den Schritt, der gerade spielt."),
   ]),
   ("pitch", "KOPFZEILE", [
-    ("NEW", "Neue Zufallsnoten für alle vier Loops würfeln."),
-    ("RESET", "Alle Loops beim nächsten Trigger ab Schritt 1 starten."),
+    ("NEW", "Sofort neue Zufallsnoten für alle vier Loops würfeln (auch wenn die DAW steht)."),
+    ("INIT", "Alle Regler auf Grundstellung (Skala, Spread, Length, Vary, Kanäle ...). Deine Noten bleiben, NEW würfelt neue."),
+    ("Grösse", "Unten rechts an der Ecke ziehen: Fenster grösser oder kleiner (60 % bis 200 %). Es öffnet immer in 100 %."),
   ]),
  ],
  "scales": "Die 27 Skalen",

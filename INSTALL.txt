@@ -129,7 +129,8 @@ Repetitor is a MIDI effect: MIDI notes go in, new notes come out.
   to play all four on one synth).
 - LENGTH fully right (INF): always new notes. Turn it down to loop the
   last 1-32 notes. Like what you hear? Keep it.
-- NEW: roll new notes. RESET: start the loops from step 1.
+- NEW: roll new notes. INIT: all controls back to default.
+- Drag the bottom right corner to resize the window.
 - RHYTHM: random repeating rhythm, DENSITY sets how many steps play.
 - Click keys on the mini keyboard to build your own scale.
 - VARY: Skip, Octave and 5th chance for variation.
@@ -301,7 +302,8 @@ Repetitor ist ein MIDI-Effekt: MIDI-Noten rein, neue Noten raus.
   stellen, um alle vier auf einem Synth zu spielen).
 - LENGTH ganz rechts (INF): immer neue Noten. Runterdrehen = die letzten
   1-32 Noten loopen. Gefällt es dir, bleibt es so.
-- NEW: neue Noten würfeln. RESET: Loops ab Schritt 1 starten.
+- NEW: neue Noten würfeln. INIT: alle Regler auf Grundstellung.
+- Unten rechts an der Ecke ziehen = Fenster grösser / kleiner.
 - RHYTHM: zufälliger, sich wiederholender Rhythmus, DENSITY = wie viele
   Schritte spielen.
 - Tasten auf der Mini-Tastatur anklicken = eigene Skala.

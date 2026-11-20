@@ -201,10 +201,38 @@ int main()
         p.toggleKey (9);   // A dazu, fuer Screenshot
     }
 
+    // NEW ohne Audio-Verarbeitung: Werte aendern sich sofort
+    {
+        const float before = p.view[0].pitch[5].load();
+        p.requestNew();
+        CHECK (std::abs (p.view[0].pitch[5].load() - before) > 1e-6f, "NEW wuerfelt sofort neu");
+    }
+
+    // INIT: alles auf Grundstellung
+    {
+        RepetitorProcessor q2;
+        setP (q2, ParamIDs::spread, 3.0f); setP (q2, ParamIDs::downUp, -1.0f); setP (q2, ParamIDs::chLen (2), 5.0f);
+        setP (q2, ParamIDs::octChance, 0.8f); q2.toggleKey (4);
+        q2.initAll();
+        bool allDefault = true;
+        for (auto* prm : q2.getParameters())
+            if (auto* r = dynamic_cast<juce::RangedAudioParameter*> (prm))
+                allDefault &= std::abs (r->getValue() - r->getDefaultValue()) < 1e-6f;
+        CHECK (allDefault && ! q2.isCustom(), "INIT setzt alle Parameter zurueck");
+    }
+
     // GUI erstellen
     {
         std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());
         CHECK (ed != nullptr && ed->getWidth() > 0, "Editor laesst sich oeffnen");
+        ed->setSize (1800, 1014);
+        CHECK (ed->isResizable() && std::abs (p.uiScale.load() - 1.5f) < 0.01f, "Editor skaliert (1.5x)");
+        juce::Image big (juce::Image::RGB, ed->getWidth(), ed->getHeight(), true);
+        juce::Graphics gb (big);
+        ed->paintEntireComponent (gb, false);
+        juce::FileOutputStream osb (juce::File ("/tmp/repetitor_big.png"));
+        juce::PNGImageFormat().writeImageToStream (big, osb);
+        ed->setSize (1200, 676);
         juce::Image img (juce::Image::RGB, ed->getWidth(), ed->getHeight(), true);
         juce::Graphics g (img);
         ed->paintEntireComponent (g, false);
