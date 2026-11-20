@@ -42,14 +42,15 @@ SCENES = [  # start, ende, titel, untertitel, fokus, farbe
 ]
 
 if D.get("long"):
+    K = D.get("sceneScale", 1.0) * BAR
     SCENES = [
-        (0.0, 2 * BAR, "", "", "full", SLOT[0]),
-        (2 * BAR, 7 * BAR, "RANDOM NOTES", "always in key  ·  four voices", "notes", SLOT[0]),
-        (7 * BAR, 12 * BAR, "PICK A SCALE", "27 scales, or click your own notes", "scale", (255, 213, 79)),
-        (12 * BAR, 17 * BAR, "LIKE IT? LOOP IT", "turn Length down  ·  1 to 32 steps", "loop", (77, 208, 225)),
-        (17 * BAR, 21 * BAR, "ADD RHYTHM", "random patterns that repeat", "rv", (77, 208, 225)),
-        (21 * BAR, 26 * BAR, "LET IT DRIFT", "skip  ·  octave  ·  fifth", "notes", (255, 77, 94)),
-        (26 * BAR, GUI_UNTIL, "POLYMETER", "own loop length per voice", "rows", SLOT[3]),
+        (0.0, 2 * K, "", "", "full", SLOT[0]),
+        (2 * K, 7 * K, "RANDOM NOTES", "always in key  ·  four voices", "notes", SLOT[0]),
+        (7 * K, 12 * K, "PICK A SCALE", "27 scales, or click your own notes", "scale", (255, 213, 79)),
+        (12 * K, 17 * K, "LIKE IT? LOOP IT", "turn Length down  ·  1 to 32 steps", "loop", (77, 208, 225)),
+        (17 * K, 21 * K, "ADD RHYTHM", "random patterns that repeat", "rv", (77, 208, 225)),
+        (21 * K, 26 * K, "LET IT DRIFT", "skip  ·  octave  ·  fifth", "notes", (255, 77, 94)),
+        (26 * K, GUI_UNTIL, "POLYMETER", "own loop length per voice", "rows", SLOT[3]),
     ]
 
 def scene_at(t):

@@ -12,6 +12,8 @@
 static constexpr double FPS = 30.0, SR = 48000.0;
 static double BPM = 84.0, BEAT = 0, BAR = 0, TOTAL = 0, GUI_UNTIL = 0;   // in run() gesetzt
 static bool dramatic = false;   // mit Sample (argv[3]): dunkler, dramatischer Sound
+static bool club = false;       // argv[4] == "club": 90 s, 124 BPM, nur Pluck-Arpeggios (kein Beat, kein Bass)
+static double sceneScale = 1.0;  // Zeitachse des langen Ablaufs (1.0 = 31 GUI-Takte)
 static bool jazz = false;       // argv[4] == "jazz": 90 s, 90 BPM, Rhodes + Upright-Bass + Jazz-Drums, Swing
 static bool longMode = false;   // argv[4] == "long": 90-s-Version, A Moll, Sample eine Oktave hoeher, heller
 static void setTempo (double bpm, double bars, double guiBars)
@@ -29,6 +31,7 @@ struct AmbientSynth
         int ch = 0, note = 0;
         double freq = 0, ph1 = 0, ph2 = 0, ph3 = 0, t = 0, relT = 0, relLevel = 0, vel = 0;
         double lp1 = 0, lp2 = 0, lfo = 0;
+        double sv[4] {};   // SVF-Zustaende (links / rechts)
     };
     std::array<Voice, 48> voices;
     juce::Random rnd { 7 };
@@ -51,6 +54,14 @@ struct AmbientSynth
     struct Patch { double a, d, s, r, gain, pan; };
     static Patch patch (int ch)
     {
+        if (club)
+            switch (ch)
+            {
+                case 1:  return { 0.002, 0.26, 0.0, 0.10, 0.30, 0.50 };   // Haupt-Arp 1/16
+                case 2:  return { 0.002, 0.22, 0.0, 0.10, 0.20, 0.30 };   // hoch 1/8
+                case 3:  return { 0.003, 0.45, 0.0, 0.14, 0.24, 0.70 };   // Stab 1/4
+                default: return { 0.002, 0.18, 0.0, 0.08, 0.17, 0.55 };   // 1/16 hoch
+            }
         if (jazz)
             switch (ch)
             {
@@ -91,7 +102,8 @@ struct AmbientSynth
         for (auto& v : voices)
             if (v.active && ! v.released && v.ch == ch && v.note == note)
             {
-                v.relLevel = env (v); v.released = true; v.relT = 0;
+                if (! club) v.relLevel = env (v);
+                v.released = true; v.relT = 0;
             }
     }
     static double env (const Voice& v)
@@ -117,6 +129,49 @@ struct AmbientSynth
 
             const double tw = juce::MathConstants<double>::twoPi;
             double s = 0;
+            if (club)
+            {
+                // Moderner Pluck: 3 verstimmte PolyBLEP-Saws, Stereo, resonanter Tiefpass mit Filter-Huellkurve
+                auto blep = [] (double t, double d)
+                {
+                    if (t < d) { const double x = t / d; return x + x - x * x - 1.0; }
+                    if (t > 1.0 - d) { const double x = (t - 1.0) / d; return x * x + x + x + 1.0; }
+                    return 0.0;
+                };
+                auto saw = [&] (double& ph, double f)
+                {
+                    const double d = f * dt;
+                    const double y = 2.0 * ph - 1.0 - blep (ph, d);
+                    ph += d; if (ph >= 1.0) ph -= 1.0;
+                    return y;
+                };
+                if (v.t == 0.0) { v.ph1 = rnd.nextDouble(); v.ph2 = rnd.nextDouble(); v.ph3 = rnd.nextDouble(); }
+                const double c = saw (v.ph1, v.freq);
+                const double l = saw (v.ph2, v.freq * 0.9931);
+                const double r = saw (v.ph3, v.freq * 1.0069);
+                const double amp = v.released ? std::exp (-v.relT / P.r) * v.relLevel : juce::jmin (1.0, v.t / P.a) * std::exp (-v.t / P.d);
+                if (! v.released) v.relLevel = amp;
+                if (amp < 0.0005 && v.t > 0.05) { v.active = false; continue; }
+                const double fenv = std::exp (-v.t / (v.ch == 3 ? 0.22 : 0.14));
+                const double fc = juce::jmin (16000.0, 420.0 + v.freq * 2.2 + 9000.0 * (0.45 + 0.55 * v.vel) * fenv);
+                const double g = std::tan (juce::MathConstants<double>::pi * fc / SR), k = 0.85;
+                const double a1 = 1.0 / (1.0 + g * (g + k)), a2 = g * a1, a3 = g * a2;
+                auto svf = [&] (double x, double& ic1, double& ic2)
+                {
+                    const double v3 = x - ic2, v1 = a1 * ic1 + a2 * v3, v2 = ic2 + a2 * ic1 + a3 * v3;
+                    ic1 = 2.0 * v1 - ic1; ic2 = 2.0 * v2 - ic2;
+                    return v2;
+                };
+                const double yl = svf (c * 0.7 + l, v.sv[0], v.sv[1]);
+                const double yr = svf (c * 0.7 + r, v.sv[2], v.sv[3]);
+                const double gg = amp * P.gain * (0.6 + 0.4 * v.vel);
+                const double w = (P.pan - 0.5) * 0.8;
+                L += yl * gg * (1.0 - w);
+                R += yr * gg * (1.0 + w);
+                v.t += dt;
+                if (v.released) v.relT += dt;
+                continue;
+            }
             if (jazz)
             {
                 double y;
@@ -330,8 +385,11 @@ int ReelAccess::run (int argc, char** argv)
     dramatic = sampleFile.existsAsFile();
     longMode = argc > 4 && (juce::String (argv[4]) == "long" || juce::String (argv[4]) == "jazz");
     jazz = argc > 4 && juce::String (argv[4]) == "jazz";
-    if (jazz) dramatic = false;
-    if (jazz)          setTempo (90.0, 34.0, 31.0);   // 90.7 s
+    club = argc > 4 && juce::String (argv[4]) == "club";
+    if (club) longMode = true;
+    if (jazz || club) dramatic = false;
+    if (club)          setTempo (124.0, 46.5, 42.0);  // 90 s
+    else if (jazz)     setTempo (90.0, 34.0, 31.0);   // 90.7 s
     else if (longMode) setTempo (96.0, 36.0, 33.0);   // 90 s
     else if (dramatic) setTempo (92.0, 12.0, 10.0);
     else               setTempo (84.0, 12.0, 10.0);
@@ -368,6 +426,17 @@ int ReelAccess::run (int argc, char** argv)
         setParam (p, ParamIDs::downUp, 0.5f);
         oct[0] = -1.0f; oct[1] = 0.0f; oct[2] = 1.0f; oct[3] = 0.0f;
     }
+    if (club)
+    {
+        // A Moll: startet mit den Dreiklangtoenen (FEW), dann MORE, dann ALL
+        setParam (p, ParamIDs::root, 9.0f);
+        setParam (p, ParamIDs::octave, 2.0f);        // A2 = 57
+        setParam (p, ParamIDs::flavor, 0.0f);
+        setParam (p, ParamIDs::count, 0.0f);
+        setParam (p, ParamIDs::downUp, 0.4f);
+        setParam (p, ParamIDs::gate, 3.0f);          // 1/16
+        oct[0] = 0.0f; oct[1] = 1.0f; oct[2] = 0.0f; oct[3] = 1.0f;
+    }
     if (jazz)
     {
         // D Dorian: startet mit den Akkordtoenen (Dm7), dann Pentatonik, dann ganze Skala
@@ -384,9 +453,11 @@ int ReelAccess::run (int argc, char** argv)
         setParam (p, ParamIDs::chSrc (c), src[c]);
         setParam (p, ParamIDs::chOct (c), oct[c]);
         if (jazz) setParam (p, ParamIDs::chSrc (c), (float) (c == 0 ? 7 : c == 1 ? 5 : c == 2 ? 7 : 8));   // Bass 1/4, Rhodes 1/8, 1/4, 1/2
+        if (club) setParam (p, ParamIDs::chSrc (c), (float) (c == 0 ? 3 : c == 1 ? 5 : c == 2 ? 7 : 3));   // 1/16, 1/8, 1/4, 1/16
         setParam (p, ParamIDs::chOut (c), (float) c);
     }
-    setParam (p, ParamIDs::velocity, jazz ? 84.0f : 90.0f);
+    setParam (p, ParamIDs::velocity, jazz ? 84.0f : club ? 100.0f : 90.0f);
+    if (club) setParam (p, ParamIDs::chOn (3), 0.0f);   // Kanal 4 kommt erst bei POLYMETER dazu
 
     std::unique_ptr<juce::AudioProcessorEditor> edp (p.createEditor());
     auto& ed = *dynamic_cast<RepetitorEditor*> (edp.get());
@@ -398,6 +469,8 @@ int ReelAccess::run (int argc, char** argv)
     std::vector<Event> ev;
     auto at = [&] (double t, std::function<void()> fn) { ev.push_back ({ t, std::move (fn) }); };
     auto bar = [] (double b) { return b * BAR; };
+    sceneScale = longMode ? (GUI_UNTIL / BAR) / 31.0 : 1.0;
+    auto lbar = [] (double b) { return b * sceneScale * BAR; };
 
     juce::Array<juce::var> cursor;
     auto kf = [&] (double t, juce::Point<float> pt, bool pressed = false)
@@ -435,27 +508,29 @@ int ReelAccess::run (int argc, char** argv)
         auto seg = [] (juce::Rectangle<float> r, int i) { return juce::Point<float> (r.getX() + r.getWidth() * ((float) i + 0.5f) / 3.0f, r.getCentreY()); };
 
         // RANDOM NOTES (Bar 2-7): NEW
-        kf (bar (2.3), { 1000.0f, 330.0f });
-        click (bar (5.0), centre (in (ed, ed.newButton)), [&] { p.requestNew(); });
+        kf (lbar (2.3), { 1000.0f, 330.0f });
+        click (lbar (5.0), centre (in (ed, ed.newButton)), [&] { p.requestNew(); });
         // PICK A SCALE (Bar 7-12): A Moll Akkordtoene -> Pentatonik -> ganze Skala
-        click (bar (8.4), seg (cs, 1), [&] { setParam (p, ParamIDs::count, 1.0f); });
-        click (bar (10.4), seg (cs, 2), [&] { setParam (p, ParamIDs::count, 2.0f); });
+        click (lbar (8.4), seg (cs, 1), [&] { setParam (p, ParamIDs::count, 1.0f); });
+        click (lbar (10.4), seg (cs, 2), [&] { setParam (p, ParamIDs::count, 2.0f); });
         // LOOP (Bar 12-17)
-        knobDrag (ed.kLength.slider, ParamIDs::length, bar (13.0), bar (14.0), 11.0f, 6.0f, 46.0f);
+        knobDrag (ed.kLength.slider, ParamIDs::length, lbar (13.0), lbar (14.0), 11.0f, 6.0f, 46.0f);
         // RHYTHM (Bar 17-21)
-        click (bar (17.8), centre (in (ed, ed.rhythmButton)), [&] { setParam (p, ParamIDs::rhythm, 1.0f); });
-        knobDrag (ed.kDensity.slider, ParamIDs::density, bar (18.6), bar (19.4), 0.5f, 0.72f, -30.0f);
+        click (lbar (17.8), centre (in (ed, ed.rhythmButton)), [&] { setParam (p, ParamIDs::rhythm, 1.0f); });
+        knobDrag (ed.kDensity.slider, ParamIDs::density, lbar (18.6), lbar (19.4), 0.5f, 0.72f, -30.0f);
         // DRIFT (Bar 21-26)
-        knobDrag (ed.kOctChance.slider, ParamIDs::octChance, bar (21.8), bar (22.5), 0.0f, 0.35f, -40.0f);
-        knobDrag (ed.kFifth.slider, ParamIDs::fifth, bar (23.2), bar (23.8), 0.0f, 0.25f, -34.0f);
-        knobDrag (ed.kSkip.slider, ParamIDs::skip, bar (24.4), bar (24.9), 0.0f, 0.15f, -26.0f);
+        knobDrag (ed.kOctChance.slider, ParamIDs::octChance, lbar (21.8), lbar (22.5), 0.0f, 0.35f, -40.0f);
+        knobDrag (ed.kFifth.slider, ParamIDs::fifth, lbar (23.2), lbar (23.8), 0.0f, 0.25f, -34.0f);
+        knobDrag (ed.kSkip.slider, ParamIDs::skip, lbar (24.4), lbar (24.9), 0.0f, 0.15f, -26.0f);
         // POLYMETER (Bar 26-33): eigene Laenge pro Kanal
         auto& r3 = *ed.rows[2];
         auto& r4 = *ed.rows[3];
-        click (bar (27.2), centre (in (ed, r3.lenBox)), [&] { setParam (p, ParamIDs::chLen (2), 6.0f); });    // 6
-        click (bar (28.8), centre (in (ed, r4.lenBox)), [&] { setParam (p, ParamIDs::chLen (3), 8.0f); });    // 12
-        click (bar (30.4), centre (in (ed, ed.rows[1]->lenBox)), [&] { setParam (p, ParamIDs::chLen (1), 9.0f); });  // 16
-        kf (bar (31.5), { 1000.0f, 330.0f });
+        click (lbar (27.2), centre (in (ed, r3.lenBox)), [&] { setParam (p, ParamIDs::chLen (2), 6.0f); });    // 6
+        click (lbar (28.8), centre (in (ed, r4.lenBox)), [&] { setParam (p, ParamIDs::chLen (3), 8.0f); });    // 12
+        click (lbar (30.4), centre (in (ed, ed.rows[1]->lenBox)), [&] { setParam (p, ParamIDs::chLen (1), 9.0f); });  // 16
+        if (club)
+            click (lbar (28.0), centre (in (ed, ed.rows[3]->onButton)), [&] { setParam (p, ParamIDs::chOn (3), 1.0f); });
+        kf (lbar (31.5), { 1000.0f, 330.0f });
     }
     else
     {
@@ -592,7 +667,7 @@ int ReelAccess::run (int argc, char** argv)
                     const auto m = swingQueue.front().second;
                     if (m.isNoteOn())
                     {
-                        const int vel = jazz ? juce::jlimit (30, 127, m.getVelocity() + synth.rnd.nextInt (31) - 15) : m.getVelocity();
+                        const int vel = (jazz || club) ? juce::jlimit (30, 127, m.getVelocity() + synth.rnd.nextInt (jazz ? 31 : 21) - (jazz ? 15 : 10)) : m.getVelocity();
                         synth.noteOn (m.getChannel(), m.getNoteNumber(), vel); ++noteCount;
                     }
                     else if (m.isNoteOff()) synth.noteOff (m.getChannel(), m.getNoteNumber());
@@ -638,17 +713,35 @@ int ReelAccess::run (int argc, char** argv)
             bl[(size_t) w] = (inL + inR) * 0.5f * 0.6f + dr * 0.5f;
             br[(size_t) w] = dl * 0.5f;
             w = (w + 1) % dly;
-            const float dm = jazz ? 0.10f : 0.38f;
+            const float dm = jazz ? 0.10f : club ? 0.30f : 0.38f;
             audio.setSample (0, i, inL + dl * dm);
             audio.setSample (1, i, inR + dr * dm);
         }
         juce::Reverb rev;
         rev.setSampleRate (SR);
         juce::Reverb::Parameters rp;
-        rp.roomSize = jazz ? 0.55f : dramatic ? 0.88f : 0.92f; rp.damping = jazz ? 0.6f : longMode ? 0.5f : dramatic ? 0.75f : 0.55f;
-        rp.wetLevel = jazz ? 0.2f : longMode ? 0.4f : dramatic ? 0.34f : 0.42f; rp.dryLevel = 0.8f; rp.width = 1.0f;
+        rp.roomSize = club ? 0.72f : jazz ? 0.55f : dramatic ? 0.88f : 0.92f; rp.damping = jazz ? 0.6f : longMode ? 0.5f : dramatic ? 0.75f : 0.55f;
+        rp.wetLevel = club ? 0.26f : jazz ? 0.2f : longMode ? 0.4f : dramatic ? 0.34f : 0.42f; rp.dryLevel = 0.8f; rp.width = 1.0f;
         rev.setParameters (rp);
         rev.processStereo (audio.getWritePointer (0), audio.getWritePointer (1), totalSamples);
+
+        if (club)
+        {
+            // Hochpass 150 Hz (kein Bass) + leichtes Pumpen auf jeder Viertel (Sidechain-Gefuehl ohne Kick)
+            double hpL = 0, hpR = 0, xl = 0, xr = 0;
+            const double a = std::exp (-juce::MathConstants<double>::twoPi * 150.0 / SR);
+            for (int i = 0; i < totalSamples; ++i)
+            {
+                const double inL = audio.getSample (0, i), inR = audio.getSample (1, i);
+                hpL = a * (hpL + inL - xl); xl = inL;
+                hpR = a * (hpR + inR - xr); xr = inR;
+                const double bt = (double) i / SR / BEAT;
+                const double since = (bt - std::floor (bt)) * BEAT;
+                const double pump = 0.8 + 0.2 * (1.0 - std::exp (-since / 0.09));
+                audio.setSample (0, i, (float) (hpL * pump));
+                audio.setSample (1, i, (float) (hpR * pump));
+            }
+        }
 
         // Ein- und Ausblenden, auf -1 dBFS normalisieren
         const int fadeIn = (int) (0.4 * SR), fadeOut = (int) (2.5 * SR);
@@ -677,6 +770,7 @@ int ReelAccess::run (int argc, char** argv)
     root->setProperty ("total", TOTAL);
     root->setProperty ("long", longMode);
     root->setProperty ("jazz", jazz);
+    root->setProperty ("sceneScale", sceneScale);
     root->setProperty ("cursor", cursor);
     root->setProperty ("rects", layout);
     outDir.getChildFile ("events.json").replaceWithText (juce::JSON::toString (juce::var (root)));
