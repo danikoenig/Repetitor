@@ -49,7 +49,7 @@ if D.get("long"):
         (12 * BAR, 17 * BAR, "LIKE IT? LOOP IT", "turn Length down  ·  1 to 32 steps", "loop", (77, 208, 225)),
         (17 * BAR, 21 * BAR, "ADD RHYTHM", "random patterns that repeat", "rv", (77, 208, 225)),
         (21 * BAR, 26 * BAR, "LET IT DRIFT", "skip  ·  octave  ·  fifth", "notes", (255, 77, 94)),
-        (26 * BAR, 33 * BAR, "POLYMETER", "own loop length per voice", "rows", SLOT[3]),
+        (26 * BAR, GUI_UNTIL, "POLYMETER", "own loop length per voice", "rows", SLOT[3]),
     ]
 
 def scene_at(t):

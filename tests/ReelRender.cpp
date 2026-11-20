@@ -12,6 +12,7 @@
 static constexpr double FPS = 30.0, SR = 48000.0;
 static double BPM = 84.0, BEAT = 0, BAR = 0, TOTAL = 0, GUI_UNTIL = 0;   // in run() gesetzt
 static bool dramatic = false;   // mit Sample (argv[3]): dunkler, dramatischer Sound
+static bool jazz = false;       // argv[4] == "jazz": 90 s, 90 BPM, Rhodes + Upright-Bass + Jazz-Drums, Swing
 static bool longMode = false;   // argv[4] == "long": 90-s-Version, A Moll, Sample eine Oktave hoeher, heller
 static void setTempo (double bpm, double bars, double guiBars)
 {
@@ -36,13 +37,28 @@ struct AmbientSynth
     int sampleRoot = 60;   // Note, auf der das Sample original klingt (48 = eine Oktave hoeher abspielen)
     bool isSampler (int ch) const { return dramatic && sample.getNumSamples() > 0 && (ch == 2 || ch == 3); }
 
+    // Jazz-Drums
+    double kickT = 10, kickPh = 0, snT = 10, snVel = 0, rideT = 10, rideVel = 0, rideHp = 0, rideLp = 0, snLp = 0, snPrev = 0;
+    double ridePh[6] {};
+    void kick()             { kickT = 0; kickPh = 0; }
+    void snare (double v)   { snT = 0; snVel = v; }
+    void ride (double v)    { rideT = 0; rideVel = v; }
+
     // Boom auf jedem Takt (nur dramatisch)
-    double boomT = 10.0, boomPh = 0.0;
+    double boomT = 10.0, boomPh = 0.0, tremT = 0.0;
     void boom() { boomT = 0.0; boomPh = 0.0; }
 
     struct Patch { double a, d, s, r, gain, pan; };
     static Patch patch (int ch)
     {
+        if (jazz)
+            switch (ch)
+            {
+                case 1:  return { 0.004, 0.0, 1.0, 0.12, 0.52, 0.48 };   // Upright-Bass
+                case 2:  return { 0.002, 0.0, 1.0, 0.30, 0.34, 0.40 };   // Rhodes Mitte
+                case 3:  return { 0.002, 0.0, 1.0, 0.30, 0.24, 0.62 };   // Rhodes hoch
+                default: return { 0.002, 0.0, 1.0, 0.45, 0.30, 0.50 };   // Rhodes tief
+            }
         if (dramatic)
             switch (ch)
             {
@@ -101,6 +117,45 @@ struct AmbientSynth
 
             const double tw = juce::MathConstants<double>::twoPi;
             double s = 0;
+            if (jazz)
+            {
+                double y;
+                if (v.ch == 1)
+                {
+                    // Upright: Sinus + Oberton, Zupf-Huellkurve, leicht gefiltert
+                    const double pl = std::exp (-v.t / 0.9) * 0.75 + 0.25 * std::exp (-v.t / 3.0);
+                    const double raw = std::sin (v.ph1) + 0.35 * std::sin (2.0 * v.ph1) * std::exp (-v.t * 6.0) + 0.12 * std::sin (3.0 * v.ph1) * std::exp (-v.t * 10.0);
+                    v.ph1 += tw * v.freq * dt;
+                    y = raw * pl;
+                }
+                else
+                {
+                    // Rhodes: FM 1:1 (Bark, faellt schnell ab) + leiser Tine-Ping bei 14x, lange Abklingzeit
+                    const double dec = juce::jlimit (1.0, 4.0, 4.0 * std::pow (2.0, -(v.note - 48) / 18.0));
+                    const double amp = std::exp (-v.t / dec);
+                    const double idx = (0.35 + 1.5 * v.vel) * std::exp (-v.t * 4.0) + 0.18;
+                    const double mod = std::sin (v.ph2);
+                    const double car = std::sin (v.ph1 + idx * mod);
+                    const double tine = std::sin (v.ph3) * std::exp (-v.t * 55.0) * 0.18 * v.vel;
+                    v.ph1 += tw * v.freq * dt;
+                    v.ph2 += tw * v.freq * 1.0006 * dt;
+                    v.ph3 += tw * v.freq * 14.0 * dt;
+                    y = (car + tine) * amp;
+                }
+                const double rel = v.released ? std::exp (-v.relT / (P.r * 0.3)) : 1.0;
+                if (v.released && v.relT > P.r * 2.5) { v.active = false; continue; }
+                if (v.t > 8.0) { v.active = false; continue; }
+                const double atk = juce::jmin (1.0, v.t / P.a);
+                const double g = y * atk * rel * P.gain * (0.6 + 0.4 * v.vel);
+                // Tremolo (Stereo-Autopan wie beim Suitcase-Rhodes)
+                const double trem = v.ch == 1 ? 0.0 : 0.28 * std::sin (tw * 4.6 * tremT + (v.ch == 3 ? 1.0 : 0.0));
+                const double pan = juce::jlimit (0.05, 0.95, P.pan + trem);
+                L += g * std::cos (pan * juce::MathConstants<double>::halfPi);
+                R += g * std::sin (pan * juce::MathConstants<double>::halfPi);
+                v.t += dt;
+                if (v.released) v.relT += dt;
+                continue;
+            }
             if (isSampler (v.ch))
             {
                 const double rate = std::pow (2.0, (v.note - sampleRoot) / 12.0) * sampleRate / SR;
@@ -161,6 +216,40 @@ struct AmbientSynth
             R += s * std::sin (pan * juce::MathConstants<double>::halfPi);
             v.t += dt;
             if (v.released) v.relT += dt;
+        }
+        tremT += dt;
+        if (jazz)
+        {
+            const double tw = juce::MathConstants<double>::twoPi;
+            if (kickT < 1.0)
+            {
+                const double f = 48.0 + 40.0 * std::exp (-kickT * 30.0);
+                kickPh += tw * f * dt;
+                const double k = std::sin (kickPh) * std::exp (-kickT * 7.0) * 0.42;
+                L += k; R += k;
+                kickT += dt;
+            }
+            if (snT < 0.6)
+            {
+                // Besen-Snare: weiches, gefiltertes Rauschen
+                const double nz = rnd.nextDouble() * 2.0 - 1.0;
+                snLp += 0.22 * (nz - snLp);
+                const double sn = (snLp - snPrev * 0.0) * std::exp (-snT * 9.0) * 0.24 * snVel;
+                L += sn * 0.9; R += sn * 1.1;
+                snT += dt;
+            }
+            if (rideT < 1.6)
+            {
+                // Ride: inharmonische Sinus + Hochpass-Rauschen
+                static const double rf[6] { 3127.0, 4218.0, 5243.0, 6611.0, 7457.0, 8860.0 };
+                double m = 0;
+                for (int k = 0; k < 6; ++k) { ridePh[k] += tw * rf[k] * dt; m += std::sin (ridePh[k]); }
+                const double nz = rnd.nextDouble() * 2.0 - 1.0;
+                rideHp = 0.93 * (rideHp + nz - rideLp); rideLp = nz;
+                const double r = (m * 0.05 + rideHp * 0.35) * (std::exp (-rideT * 3.2) * 0.8 + std::exp (-rideT * 40.0) * 0.6) * 0.11 * rideVel;
+                L += r * 1.15; R += r * 0.85;
+                rideT += dt;
+            }
         }
         if (boomT < 3.0)
         {
@@ -239,8 +328,11 @@ int ReelAccess::run (int argc, char** argv)
     const juce::int64 seed = argc > 2 ? juce::String (argv[2]).getLargeIntValue() : 2026;
     const juce::File sampleFile = argc > 3 ? juce::File (juce::String (argv[3])) : juce::File();
     dramatic = sampleFile.existsAsFile();
-    longMode = argc > 4 && juce::String (argv[4]) == "long";
-    if (longMode)      setTempo (96.0, 36.0, 33.0);   // 90 s
+    longMode = argc > 4 && (juce::String (argv[4]) == "long" || juce::String (argv[4]) == "jazz");
+    jazz = argc > 4 && juce::String (argv[4]) == "jazz";
+    if (jazz) dramatic = false;
+    if (jazz)          setTempo (90.0, 34.0, 31.0);   // 90.7 s
+    else if (longMode) setTempo (96.0, 36.0, 33.0);   // 90 s
     else if (dramatic) setTempo (92.0, 12.0, 10.0);
     else               setTempo (84.0, 12.0, 10.0);
     outDir.getChildFile ("frames").createDirectory();
@@ -276,13 +368,25 @@ int ReelAccess::run (int argc, char** argv)
         setParam (p, ParamIDs::downUp, 0.5f);
         oct[0] = -1.0f; oct[1] = 0.0f; oct[2] = 1.0f; oct[3] = 0.0f;
     }
+    if (jazz)
+    {
+        // D Dorian: startet mit den Akkordtoenen (Dm7), dann Pentatonik, dann ganze Skala
+        setParam (p, ParamIDs::root, 2.0f);
+        setParam (p, ParamIDs::octave, 1.0f);        // D1 = 38
+        setParam (p, ParamIDs::flavor, 1.0f);        // DORIAN
+        setParam (p, ParamIDs::count, 0.0f);         // FEW = Minor 7
+        setParam (p, ParamIDs::downUp, 0.6f);
+        setParam (p, ParamIDs::gate, 5.0f);          // 1/4
+        oct[0] = 0.0f; oct[1] = 1.0f; oct[2] = 2.0f; oct[3] = 1.0f;
+    }
     for (int c = 0; c < numChannels; ++c)
     {
         setParam (p, ParamIDs::chSrc (c), src[c]);
         setParam (p, ParamIDs::chOct (c), oct[c]);
+        if (jazz) setParam (p, ParamIDs::chSrc (c), (float) (c == 0 ? 7 : c == 1 ? 5 : c == 2 ? 7 : 8));   // Bass 1/4, Rhodes 1/8, 1/4, 1/2
         setParam (p, ParamIDs::chOut (c), (float) c);
     }
-    setParam (p, ParamIDs::velocity, 90.0f);
+    setParam (p, ParamIDs::velocity, jazz ? 84.0f : 90.0f);
 
     std::unique_ptr<juce::AudioProcessorEditor> edp (p.createEditor());
     auto& ed = *dynamic_cast<RepetitorEditor*> (edp.get());
@@ -398,6 +502,35 @@ int ReelAccess::run (int argc, char** argv)
     juce::AudioBuffer<float> audio (2, totalSamples);
     audio.clear();
     AmbientSynth synth;
+    if (jazz)
+    {
+        const int bars = (int) std::round (GUI_UNTIL / BAR) + 1;
+        const double swing = BEAT * 2.0 / 3.0;
+        for (int b = 0; b < bars; ++b)
+            for (int q = 0; q < 4; ++q)
+            {
+                const double t = b * BAR + q * BEAT;
+                const double hum = (synth.rnd.nextDouble() - 0.5) * 0.008;
+                at (t + hum, [&, q] { synth.ride (q % 2 == 0 ? 0.95 : 1.0); });
+                if (q == 1 || q == 3)
+                {
+                    at (t + swing + hum, [&] { synth.ride (0.6); });          // "Ding-da"
+                    at (t + hum, [&] { synth.snare (0.8); });
+                }
+                if (q == 0 || (q == 2 && b % 2 == 1))
+                    at (t, [&] { synth.kick(); });
+                if (q == 3 && b % 4 == 3)
+                    at (t + swing, [&] { synth.snare (0.5); });               // kleiner Fill
+            }
+        // Schlussakkord Dm9 mit Bass, wenn die Endkarte kommt
+        at (GUI_UNTIL + BAR, [&]
+        {
+            for (int n : { 50, 53, 57, 60, 64 }) synth.noteOn (4, n, 78);
+            synth.noteOn (1, 38, 90);
+            synth.ride (0.8); synth.kick();
+        });
+        std::sort (ev.begin(), ev.end(), [] (auto& x, auto& y) { return x.t < y.t; });
+    }
     if (dramatic)
     {
         juce::AudioFormatManager fm;
@@ -422,6 +555,7 @@ int ReelAccess::run (int argc, char** argv)
     const juce::var layout = rects (ed);
     juce::AudioBuffer<float> none (0, 512);
     int noteCount = 0;
+    std::vector<std::pair<juce::int64, juce::MidiMessage>> swingQueue;
 
     auto renderTo = [&] (int endSample)
     {
@@ -438,15 +572,31 @@ int ReelAccess::run (int argc, char** argv)
             none.setSize (0, n, false, false, true);
             if (pos < (int) (GUI_UNTIL * SR + (dramatic ? 0.9 : 0.5) * BAR * SR))   // gegen Ende keine neuen Noten mehr
                 p.processBlock (none, midi);
-            auto it = midi.begin();
+            for (const auto meta : midi)
+            {
+                juce::int64 at2 = pos + meta.samplePosition;
+                if (jazz)
+                {
+                    const double beatPos = (double) at2 / SR / BEAT;
+                    const double frac = beatPos - std::floor (beatPos);
+                    if (std::abs (frac - 0.5) < 0.01)
+                        at2 += (juce::int64) std::llround ((2.0 / 3.0 - 0.5) * BEAT * SR);   // Swing
+                }
+                swingQueue.push_back ({ at2, meta.getMessage() });
+            }
+            std::stable_sort (swingQueue.begin(), swingQueue.end(), [] (auto& a, auto& b) { return a.first < b.first; });
             for (int i = 0; i < n; ++i)
             {
-                while (it != midi.end() && (*it).samplePosition <= i)
+                while (! swingQueue.empty() && swingQueue.front().first <= pos + i)
                 {
-                    const auto m = (*it).getMessage();
-                    if (m.isNoteOn()) { synth.noteOn (m.getChannel(), m.getNoteNumber(), m.getVelocity()); ++noteCount; }
+                    const auto m = swingQueue.front().second;
+                    if (m.isNoteOn())
+                    {
+                        const int vel = jazz ? juce::jlimit (30, 127, m.getVelocity() + synth.rnd.nextInt (31) - 15) : m.getVelocity();
+                        synth.noteOn (m.getChannel(), m.getNoteNumber(), vel); ++noteCount;
+                    }
                     else if (m.isNoteOff()) synth.noteOff (m.getChannel(), m.getNoteNumber());
-                    ++it;
+                    swingQueue.erase (swingQueue.begin());
                 }
                 float l, r;
                 synth.render (l, r);
@@ -488,14 +638,15 @@ int ReelAccess::run (int argc, char** argv)
             bl[(size_t) w] = (inL + inR) * 0.5f * 0.6f + dr * 0.5f;
             br[(size_t) w] = dl * 0.5f;
             w = (w + 1) % dly;
-            audio.setSample (0, i, inL + dl * 0.38f);
-            audio.setSample (1, i, inR + dr * 0.38f);
+            const float dm = jazz ? 0.10f : 0.38f;
+            audio.setSample (0, i, inL + dl * dm);
+            audio.setSample (1, i, inR + dr * dm);
         }
         juce::Reverb rev;
         rev.setSampleRate (SR);
         juce::Reverb::Parameters rp;
-        rp.roomSize = dramatic ? 0.88f : 0.92f; rp.damping = longMode ? 0.5f : dramatic ? 0.75f : 0.55f;
-        rp.wetLevel = longMode ? 0.4f : dramatic ? 0.34f : 0.42f; rp.dryLevel = 0.75f; rp.width = 1.0f;
+        rp.roomSize = jazz ? 0.55f : dramatic ? 0.88f : 0.92f; rp.damping = jazz ? 0.6f : longMode ? 0.5f : dramatic ? 0.75f : 0.55f;
+        rp.wetLevel = jazz ? 0.2f : longMode ? 0.4f : dramatic ? 0.34f : 0.42f; rp.dryLevel = 0.8f; rp.width = 1.0f;
         rev.setParameters (rp);
         rev.processStereo (audio.getWritePointer (0), audio.getWritePointer (1), totalSamples);
 
@@ -525,6 +676,7 @@ int ReelAccess::run (int argc, char** argv)
     root->setProperty ("guiUntil", GUI_UNTIL);
     root->setProperty ("total", TOTAL);
     root->setProperty ("long", longMode);
+    root->setProperty ("jazz", jazz);
     root->setProperty ("cursor", cursor);
     root->setProperty ("rects", layout);
     outDir.getChildFile ("events.json").replaceWithText (juce::JSON::toString (juce::var (root)));
