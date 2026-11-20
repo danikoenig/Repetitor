@@ -49,7 +49,7 @@ T = {
  "kind": "MIDI effect for macOS (Apple Silicon)  ·  VST3 and Audio Unit",
  "by": "by Dani Koenig",
  "intro": ("Repetitor generates random notes that always fit a scale, on four channels at once. "
-           "Send in notes or use the internal clock, and turn <b>Length</b> up. Every trigger creates a new note. "
+           "Press play: every channel runs on its own speed (RATE) and every step creates a new note. Or trigger it with your own MIDI notes. "
            "When you hear something you like, turn Length down: the most recent notes (1 to 32 steps) loop. "
            "MIDI goes in, MIDI comes out. Repetitor makes no sound itself, it plays your synth."),
  "inspired": "Inspired by the Noise Engineering Gamut Repetitor Eurorack module, rebuilt as a MIDI plugin. Not affiliated with Noise Engineering.",
@@ -130,8 +130,8 @@ T = {
  "tips": "Good to know",
  "tip_rows": [
    "Root, Scale and Spread are applied live: change them and the loop follows.",
-   "Your loops are saved with the project.",
-   "The internal clock only runs while the DAW plays.",
+   "Your loops, loop positions and own scale are saved with the project.",
+   "The channels run while the DAW plays (RATE on a note value).",
    "All parameters can be automated in the DAW.",
  ],
  "install": "Install",
@@ -147,7 +147,7 @@ T = {
  "kind": "MIDI-Effekt für macOS (Apple Silicon)  ·  VST3 und Audio Unit",
  "by": "von Dani Koenig",
  "intro": ("Repetitor erzeugt zufällige Noten, die immer in eine Skala passen, auf vier Kanälen gleichzeitig. "
-           "Schick Noten rein oder nutze die interne Clock und dreh <b>Length</b> auf. Jeder Trigger erzeugt eine neue Note. "
+           "Drück Play: Jeder Kanal läuft in seinem eigenen Tempo (RATE), und jeder Schritt erzeugt eine neue Note. Oder du triggerst ihn mit eigenen MIDI-Noten. "
            "Gefällt dir, was du hörst, drehst du Length runter: Die letzten Noten (1 bis 32 Schritte) loopen. "
            "MIDI rein, MIDI raus. Repetitor macht selbst keinen Ton, er spielt deinen Synth."),
  "inspired": "Inspiriert vom Eurorack-Modul Gamut Repetitor von Noise Engineering, nachgebaut als MIDI-Plugin. Keine Verbindung zu Noise Engineering.",
@@ -228,8 +228,8 @@ T = {
  "tips": "Gut zu wissen",
  "tip_rows": [
    "Root, Skala und Spread wirken sofort: Änderst du sie, folgt der Loop.",
-   "Deine Loops werden mit dem Projekt gespeichert.",
-   "Die interne Clock läuft nur, wenn die DAW spielt.",
+   "Deine Loops, Loop-Positionen und deine eigene Skala werden mit dem Projekt gespeichert.",
+   "Die Kanäle laufen, solange die DAW spielt (RATE auf einem Notenwert).",
    "Alle Parameter lassen sich in der DAW automatisieren.",
  ],
  "install": "Installation",

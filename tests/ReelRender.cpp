@@ -12,6 +12,7 @@
 static constexpr double FPS = 30.0, SR = 48000.0;
 static double BPM = 84.0, BEAT = 0, BAR = 0, TOTAL = 0, GUI_UNTIL = 0;   // in run() gesetzt
 static bool dramatic = false;   // mit Sample (argv[3]): dunkler, dramatischer Sound
+static bool whatsNew = false;   // argv[4] == "new15": 90 s "What's new in 1.5", ohne Musik
 static bool club = false;       // argv[4] == "club": 90 s, 124 BPM, nur Pluck-Arpeggios (kein Beat, kein Bass)
 static double sceneScale = 1.0;  // Zeitachse des langen Ablaufs (1.0 = 31 GUI-Takte)
 static bool jazz = false;       // argv[4] == "jazz": 90 s, 90 BPM, Rhodes + Upright-Bass + Jazz-Drums, Swing
@@ -343,6 +344,10 @@ struct ReelAccess
         put ("midi", e.secMidi);
         for (int c = 0; c < numChannels; ++c)
             put (("row" + juce::String (c + 1)).toRawUTF8(), e.rows[(size_t) c]->getBounds());
+        const auto s1 = in (e, e.rows[0]->steps), s4 = in (e, e.rows[3]->steps);
+        const auto r1 = e.rows[0]->getBounds(), r4 = e.rows[3]->getBounds();
+        put ("steps", s1.getUnion (s4).expanded (8, 10).withRight (r1.getRight()));
+        put ("rowctl", juce::Rectangle<int> (r1.getX(), r1.getY(), s1.getX() - r1.getX(), r4.getBottom() - r1.getY()));
         return juce::var (o);
     }
     static int run (int argc, char** argv);
@@ -386,9 +391,12 @@ int ReelAccess::run (int argc, char** argv)
     longMode = argc > 4 && (juce::String (argv[4]) == "long" || juce::String (argv[4]) == "jazz");
     jazz = argc > 4 && juce::String (argv[4]) == "jazz";
     club = argc > 4 && juce::String (argv[4]) == "club";
+    whatsNew = argc > 4 && juce::String (argv[4]) == "new15";
+    if (whatsNew) { longMode = false; dramatic = false; }
     if (club) longMode = true;
     if (jazz || club) dramatic = false;
-    if (club)          setTempo (124.0, 46.5, 42.0);  // 90 s
+    if (whatsNew)      setTempo (124.0, 90.0 / (240.0 / 124.0), 84.0 / (240.0 / 124.0));   // 90 s, GUI bis 84 s
+    else if (club)     setTempo (124.0, 46.5, 42.0);  // 90 s
     else if (jazz)     setTempo (90.0, 34.0, 31.0);   // 90.7 s
     else if (longMode) setTempo (96.0, 36.0, 33.0);   // 90 s
     else if (dramatic) setTempo (92.0, 12.0, 10.0);
@@ -459,6 +467,14 @@ int ReelAccess::run (int argc, char** argv)
     setParam (p, ParamIDs::velocity, jazz ? 84.0f : club ? 100.0f : 90.0f);
     if (club) setParam (p, ParamIDs::chOn (3), 0.0f);   // Kanal 4 kommt erst bei POLYMETER dazu
 
+    if (whatsNew)
+    {
+        p.initAll();                                   // Grundstellung von v1.5: alle Kanaele 1/16, Down/Up Mitte
+        setParam (p, ParamIDs::root, 9.0f);            // A
+        setParam (p, ParamIDs::chOct (1), 1.0f);
+        setParam (p, ParamIDs::chOct (2), -1.0f);
+    }
+
     std::unique_ptr<juce::AudioProcessorEditor> edp (p.createEditor());
     auto& ed = *dynamic_cast<RepetitorEditor*> (edp.get());
     ed.resized();
@@ -500,7 +516,83 @@ int ReelAccess::run (int argc, char** argv)
         }
     };
 
-    if (longMode)
+    if (whatsNew)
+    {
+        // --- Zeitachse in Sekunden ---
+        auto rowsOf = [&] (int c) -> ChannelRow& { return *ed.rows[(size_t) c]; };
+        auto cellPt = [&] (int c, double cell)
+        {
+            auto sr = in (ed, rowsOf (c).steps).toFloat();
+            auto inner = sr.reduced (6.0f);
+            const float cw = inner.getWidth() / (float) maxSteps;
+            return juce::Point<float> (inner.getX() + cw * ((float) cell + 0.5f), inner.getCentreY());
+        };
+        // Bereich ueber die Schritte ziehen (Box waechst mit dem Cursor)
+        auto drawLoop = [&] (int c, int a, int b, double t0, double t1)
+        {
+            kf (t0 - 0.6, cellPt (c, a)); kf (t0, cellPt (c, a), true);
+            kf (t1, cellPt (c, b), true); kf (t1 + 0.25, cellPt (c, b));
+            for (double t = t0; t <= t1 + 1e-6; t += 1.0 / FPS)
+            {
+                const int cur = juce::roundToInt (a + (b - a) * ease ((t - t0) / (t1 - t0)));
+                const int lo = juce::jmin (a, cur), hi = juce::jmax (a, cur);
+                at (t, [&, c, lo, hi] { setParam (p, ParamIDs::chLen (c), (float) (hi - lo + 1)); setParam (p, ParamIDs::chPos (c), (float) (maxSteps - 1 - hi)); });
+            }
+        };
+        // Box verschieben
+        auto moveLoop = [&] (int c, int len, int fromStart, int toStart, double t0, double t1)
+        {
+            const double g = len / 2.0;
+            kf (t0 - 0.6, cellPt (c, fromStart + g)); kf (t0, cellPt (c, fromStart + g), true);
+            kf (t1, cellPt (c, toStart + g), true); kf (t1 + 0.25, cellPt (c, toStart + g));
+            for (double t = t0; t <= t1 + 1e-6; t += 1.0 / FPS)
+            {
+                const int st = juce::roundToInt (fromStart + (toStart - fromStart) * ease ((t - t0) / (t1 - t0)));
+                at (t, [&, c, len, st] { setParam (p, ParamIDs::chPos (c), (float) (maxSteps - len - st)); });
+            }
+        };
+        auto comboClick = [&] (double t, juce::ComboBox& box, std::function<void()> fn) { click (t, centre (in (ed, box)), std::move (fn)); };
+
+        kf (3.0, { 900.0f, 420.0f });
+        // OWN SPEED (16-28 s)
+        comboClick (18.0, rowsOf (1).srcBox, [&] { setParam (p, ParamIDs::chSrc (1), 5.0f); });   // 1/8
+        comboClick (21.0, rowsOf (2).srcBox, [&] { setParam (p, ParamIDs::chSrc (2), 7.0f); });   // 1/4
+        comboClick (24.0, rowsOf (3).srcBox, [&] { setParam (p, ParamIDs::chSrc (3), 4.0f); });   // 1/8T
+        // GATE (28-38 s)
+        knobDrag (rowsOf (0).kGate.slider, ParamIDs::chGate (0), 29.5, 31.0, 0.5f, 0.15f, 34.0f);
+        knobDrag (rowsOf (2).kGate.slider, ParamIDs::chGate (2), 32.8, 34.3, 0.5f, 1.0f, -40.0f);
+        knobDrag (rowsOf (3).kGate.slider, ParamIDs::chGate (3), 35.6, 36.8, 0.5f, 0.3f, 22.0f);
+        // MOVE YOUR LOOP (38-56 s)
+        drawLoop (0, 18, 25, 40.0, 41.8);                    // 8 Schritte waehlen
+        moveLoop (0, 8, 18, 6, 44.0, 46.2);                  // Box nach links schieben
+        moveLoop (0, 8, 6, 12, 47.4, 48.6);
+        drawLoop (1, 22, 27, 50.0, 51.4);                    // Kanal 2: 6 Schritte
+        drawLoop (2, 31, 20, 52.6, 54.4);                    // Kanal 3: 12 Schritte, von rechts gezogen
+        // NEW SCALES (56-68 s)
+        {
+            auto seg = [] (juce::Rectangle<float> r, int i, int n) { return juce::Point<float> (r.getX() + r.getWidth() * ((float) i + 0.5f) / (float) n, r.getCentreY()); };
+            auto fs = in (ed, *ed.flavSwitch).toFloat();
+            auto ms = in (ed, *ed.famSwitch).toFloat();
+            click (58.0, seg (fs, 1, 3), [&] { setParam (p, ParamIDs::flavor, 1.0f); });   // DORIAN
+            click (60.5, seg (fs, 2, 3), [&] { setParam (p, ParamIDs::flavor, 2.0f); });   // DARK
+            click (63.0, seg (ms, 0, 2), [&] { setParam (p, ParamIDs::family, 0.0f); });   // MAJOR
+            click (65.5, seg (fs, 1, 3), [&] { setParam (p, ParamIDs::flavor, 1.0f); });   // BLUES
+        }
+        // PIANO KEYS (68-76 s): zurueck auf A Minor Penta, dann Toene klicken
+        at (68.0, [&] { setParam (p, ParamIDs::family, 1.0f); setParam (p, ParamIDs::flavor, 0.0f); });
+        {
+            auto keyPt = [&] (int k) { return ed.keyRect (k).getCentre().translated (0.0f, ed.isBlackKey (k) ? 0.0f : 8.0f); };
+            click (69.6, keyPt (2),  [&] { p.toggleKey (2); });    // D weg
+            click (71.0, keyPt (11), [&] { p.toggleKey (11); });   // B dazu
+            click (72.4, keyPt (1),  [&] { p.toggleKey (1); });    // C# (schwarz) dazu
+            click (73.8, keyPt (6),  [&] { p.toggleKey (6); });    // F# dazu
+        }
+        // HUMANIZE (76-84 s)
+        knobDrag (ed.kHuman.slider, ParamIDs::humanize, 77.4, 79.0, 0.0f, 18.0f, -38.0f);
+        knobDrag (ed.kVel.slider, ParamIDs::velocity, 80.4, 81.6, 100.0f, 92.0f, 16.0f);
+        kf (83.0, { 900.0f, 420.0f });
+    }
+    else if (longMode)
     {
         auto keysR = ed.scaleInfo.withTrimmedTop (23).toFloat();
         juce::ignoreUnused (keysR);
@@ -767,6 +859,7 @@ int ReelAccess::run (int argc, char** argv)
     root->setProperty ("guiUntil", GUI_UNTIL);
     root->setProperty ("total", TOTAL);
     root->setProperty ("long", longMode);
+    root->setProperty ("whatsnew", whatsNew);
     root->setProperty ("jazz", jazz);
     root->setProperty ("sceneScale", sceneScale);
     root->setProperty ("cursor", cursor);

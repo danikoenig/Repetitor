@@ -53,6 +53,23 @@ if D.get("long"):
         (26 * K, GUI_UNTIL, "POLYMETER", "own loop length per voice", "rows", SLOT[3]),
     ]
 
+NEW15 = bool(D.get("whatsnew"))
+if NEW15:
+    FOCUS["rowctl"] = pad(R0["rowctl"], 8)
+    FOCUS["steps"] = R0["steps"]
+    FOCUS["scalebig"] = pad(R0["scale"], 8)
+    FOCUS["vm"] = pad(union(R0["vary"], R0["midi"]), 10)
+    SCENES = [
+        (0.0, 6.0, "", "", "full", SLOT[0]),
+        (6.0, 16.0, "PRESS PLAY. IT RUNS.", "all four channels on 1/16  ·  no MIDI needed", "full", SLOT[0]),
+        (16.0, 28.0, "OWN SPEED PER CHANNEL", "1/32 to 1 bar  ·  or MIDI IN", "rowctl", SLOT[1]),
+        (28.0, 38.0, "NOTE LENGTH PER CHANNEL", "gate from short to legato", "rowctl", SLOT[2]),
+        (38.0, 56.0, "MOVE YOUR LOOP", "drag the box  ·  or draw your own loop", "steps", (77, 208, 225)),
+        (56.0, 68.0, "NEW SCALES", "major  ·  minor  ·  penta  ·  dorian  ·  dark  ·  blues", "scalebig", (255, 213, 79)),
+        (68.0, 76.0, "PIANO KEYS", "click your own scale", "scalebig", (255, 213, 79)),
+        (76.0, GUI_UNTIL, "HUMANIZE", "velocity that breathes", "vm", SLOT[3]),
+    ]
+
 def scene_at(t):
     for i, s in enumerate(SCENES):
         if s[0] <= t < s[1]: return i
@@ -171,8 +188,8 @@ def render(f):
         if i == 0:
             u = ease(t / 0.5)
             logo(d, W / 2 - 62, 250 - 30 * (1 - u), 130, 12)
-            centered(d, 420, "REPETITOR", F_TITLE, TEXT)
-            centered(d, 570, "random notes that always fit", F_TSUB, DIM)
+            centered(d, 420, "REPETITOR 1.5" if NEW15 else "REPETITOR", font("black", 104) if NEW15 else F_TITLE, TEXT)
+            centered(d, 570, "what's new" if NEW15 else "random notes that always fit", F_TSUB, DIM)
         else:
             u = ease((t - sc[0]) / 0.35)
             a = int(255 * u)
@@ -202,9 +219,10 @@ def render(f):
         end = BG.copy()
         e = ImageDraw.Draw(end, "RGBA")
         logo(e, W / 2 - 86, 430, 180, 16)
-        centered(e, 660, "REPETITOR", font("black", 116), TEXT)
-        centered(e, 805, "random notes that always fit", F_TSUB, DIM)
-        lines = ["4 voices  ·  27 scales  ·  your own scale", "loop what you like  ·  1 to 32 steps", "rhythm  ·  skip  ·  octave  ·  fifth"]
+        centered(e, 660, "REPETITOR 1.5" if NEW15 else "REPETITOR", font("black", 104 if NEW15 else 116), TEXT)
+        centered(e, 805, "what's new" if NEW15 else "random notes that always fit", F_TSUB, DIM)
+        lines = (["rate + gate per channel", "move your loop  ·  draw your own", "new scales  ·  piano keys  ·  humanize"] if NEW15 else
+                 ["4 voices  ·  18 scales  ·  your own scale", "loop what you like  ·  1 to 32 steps", "rhythm  ·  skip  ·  octave"])
         for k, ln in enumerate(lines):
             centered(e, 930 + k * 62, ln, font("semi", 40), TEXT)
         centered(e, 1170, "MIDI FX  ·  VST3 + AU  ·  Bitwig  ·  Logic  ·  Ableton", font("bold", 36), SLOT[1])
@@ -231,6 +249,7 @@ if __name__ == "__main__":
         p.stdin.write(render(f).tobytes())
         if f % 150 == 0: print("compose", f, "/", n, flush=True)
     p.stdin.close(); p.wait()
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", "video_tmp.mp4", "-i", "out/audio.wav", "-c:v", "copy",
+    audio_in = ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"] if NEW15 else ["-i", "out/audio.wav"]
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", "video_tmp.mp4"] + audio_in + ["-c:v", "copy",
                     "-c:a", "aac", "-b:a", "256k", "-shortest", "-movflags", "+faststart", "repetitor_reel.mp4"], check=True)
     print("video done")
