@@ -9,10 +9,10 @@
 #include <cstdio>
 #include <functional>
 
-static constexpr double FPS = 30.0, SR = 48000.0, BPM = 84.0;
-static constexpr double BEAT = 60.0 / BPM, BAR = 4.0 * BEAT;
-static constexpr double TOTAL = 12.0 * BAR;          // ca. 34 s
-static constexpr double GUI_UNTIL = 10.0 * BAR;      // danach Endkarte
+static constexpr double FPS = 30.0, SR = 48000.0;
+static double BPM = 84.0, BEAT = 0, BAR = 0, TOTAL = 0, GUI_UNTIL = 0;   // in run() gesetzt
+static bool dramatic = false;   // mit Sample (argv[3]): dunkler, dramatischer Sound
+static void setTempo (double bpm) { BPM = bpm; BEAT = 60.0 / BPM; BAR = 4.0 * BEAT; TOTAL = 12.0 * BAR; GUI_UNTIL = 10.0 * BAR; }
 
 //==============================================================================
 // Kleiner Ambient-Synth: Timbre je MIDI-Kanal
@@ -27,10 +27,26 @@ struct AmbientSynth
     };
     std::array<Voice, 48> voices;
     juce::Random rnd { 7 };
+    juce::AudioBuffer<float> sample;   // Sampler-Stimme (Kanal 2 und 3 im dramatischen Modus)
+    double sampleRate = 48000.0;
+    int sampleRoot = 60;
+    bool isSampler (int ch) const { return dramatic && sample.getNumSamples() > 0 && (ch == 2 || ch == 3); }
+
+    // Boom auf jedem Takt (nur dramatisch)
+    double boomT = 10.0, boomPh = 0.0;
+    void boom() { boomT = 0.0; boomPh = 0.0; }
 
     struct Patch { double a, d, s, r, gain, pan; };
     static Patch patch (int ch)
     {
+        if (dramatic)
+            switch (ch)
+            {
+                case 1:  return { 0.08, 0.0, 0.9, 1.6, 0.62, 0.50 };    // Sub
+                case 2:  return { 0.001, 0.0, 1.0, 0.9, 0.55, 0.36 };   // Sample
+                case 3:  return { 0.001, 0.0, 1.0, 1.2, 0.40, 0.66 };   // Sample, hoeher
+                default: return { 2.0, 0.0, 0.9, 3.5, 0.26, 0.50 };     // dunkles Pad
+            }
         switch (ch)
         {
             case 1:  return { 0.25, 0.0, 0.85, 2.2, 0.55, 0.50 };   // Sub (warm)
@@ -81,6 +97,24 @@ struct AmbientSynth
 
             const double tw = juce::MathConstants<double>::twoPi;
             double s = 0;
+            if (isSampler (v.ch))
+            {
+                const double rate = std::pow (2.0, (v.note - sampleRoot) / 12.0) * sampleRate / SR;
+                const int i0 = (int) v.ph1;
+                if (i0 + 1 >= sample.getNumSamples()) { v.active = false; continue; }
+                const double fr = v.ph1 - i0;
+                const int nc = sample.getNumChannels();
+                const double sl = sample.getSample (0, i0) * (1 - fr) + sample.getSample (0, i0 + 1) * fr;
+                const double sr2 = sample.getSample (nc > 1 ? 1 : 0, i0) * (1 - fr) + sample.getSample (nc > 1 ? 1 : 0, i0 + 1) * fr;
+                v.ph1 += rate;
+                const double g = e * P.gain * (0.55 + 0.45 * v.vel);
+                const double pan = P.pan;
+                L += sl * g * std::cos (pan * juce::MathConstants<double>::halfPi) * 1.41;
+                R += sr2 * g * std::sin (pan * juce::MathConstants<double>::halfPi) * 1.41;
+                v.t += dt;
+                if (v.released) v.relT += dt;
+                continue;
+            }
             switch (v.ch)
             {
                 case 1:  // Sub: Sinus + etwas Oktave
@@ -108,7 +142,7 @@ struct AmbientSynth
                     const double raw = 0.5 * (saw (v.ph1) + saw (v.ph2));
                     v.ph1 += tw * v.freq * 0.997 * dt;
                     v.ph2 += tw * v.freq * 1.003 * dt;
-                    const double cut = 500.0 + 350.0 * std::sin (v.lfo + v.t * 0.6);
+                    const double cut = (dramatic ? 260.0 : 500.0) + (dramatic ? 160.0 : 350.0) * std::sin (v.lfo + v.t * 0.6);
                     const double a = 1.0 - std::exp (-tw * cut * dt);
                     v.lp1 += a * (raw - v.lp1);
                     v.lp2 += a * (v.lp1 - v.lp2);
@@ -122,6 +156,16 @@ struct AmbientSynth
             R += s * std::sin (pan * juce::MathConstants<double>::halfPi);
             v.t += dt;
             if (v.released) v.relT += dt;
+        }
+        if (boomT < 3.0)
+        {
+            // tiefer Boom: Sinus 58 -> 36 Hz, lange Abklingzeit, kurzer Klick
+            const double f = 36.0 + 22.0 * std::exp (-boomT * 9.0);
+            boomPh += juce::MathConstants<double>::twoPi * f / SR;
+            const double b = std::sin (boomPh) * std::exp (-boomT * 2.2) * 0.85
+                           + (rnd.nextDouble() * 2.0 - 1.0) * std::exp (-boomT * 120.0) * 0.12;
+            L += b; R += b;
+            boomT += 1.0 / SR;
         }
         outL = (float) L; outR = (float) R;
     }
@@ -187,6 +231,9 @@ int ReelAccess::run (int argc, char** argv)
     if (argc < 2) { std::printf ("usage: RepetitorTest <out-dir> [seed]\n"); return 1; }
     const juce::File outDir { juce::String (argv[1]) };
     const juce::int64 seed = argc > 2 ? juce::String (argv[2]).getLargeIntValue() : 2026;
+    const juce::File sampleFile = argc > 3 ? juce::File (juce::String (argv[3])) : juce::File();
+    dramatic = sampleFile.existsAsFile();
+    setTempo (dramatic ? 92.0 : 84.0);
     outDir.getChildFile ("frames").createDirectory();
 
     RepetitorProcessor p;
@@ -196,20 +243,21 @@ int ReelAccess::run (int argc, char** argv)
     p.rng.setSeed (seed);
     p.regenerate();
 
-    // Ambient-Grundeinstellung: A Moll-Pentatonik, langsam
-    setParam (p, ParamIDs::root, 9.0f);          // A
-    setParam (p, ParamIDs::octave, 2.0f);        // A2 = 57
+    // Ambient-Grundeinstellung: A Moll-Pentatonik, langsam (dramatisch: C Moll)
+    setParam (p, ParamIDs::root, dramatic ? 0.0f : 9.0f);          // C / A
+    setParam (p, ParamIDs::octave, 2.0f);        // A2 = 57, C2 = 48
     setParam (p, ParamIDs::spread, 12.0f);
     setParam (p, ParamIDs::downUp, 1.0f);
     setParam (p, ParamIDs::family, 1.0f);
     setParam (p, ParamIDs::flavor, 0.0f);
-    setParam (p, ParamIDs::count, 1.0f);
+    setParam (p, ParamIDs::count, dramatic ? 2.0f : 1.0f);   // dramatisch: ALL (C Moll)
     setParam (p, ParamIDs::length, 11.0f);       // INF
     setParam (p, ParamIDs::gate, 6.0f);          // 1/2
     setParam (p, ParamIDs::density, 0.5f);
     // Kanal 1 Sub 1/2 tief, Kanal 2 Bell 1/8, Kanal 3 Glass 1/4 hoch, Kanal 4 Pad 1 Bar
     const float src[] { 8.0f, 5.0f, 7.0f, 9.0f };
-    const float oct[] { -1.0f, 0.0f, 1.0f, 0.0f };
+    float oct[] { -1.0f, 0.0f, 1.0f, 0.0f };
+    if (dramatic) { oct[2] = 0.0f; oct[3] = -1.0f; setParam (p, ParamIDs::downUp, 0.4f); }
     for (int c = 0; c < numChannels; ++c)
     {
         setParam (p, ParamIDs::chSrc (c), src[c]);
@@ -264,11 +312,20 @@ int ReelAccess::run (int argc, char** argv)
     // Szene 2 (Bar 3-5): Skala waehlen, dann eigene Toene
     {
         auto fs = in (ed, *ed.flavSwitch).toFloat();
-        click (bar (3.55), { fs.getX() + fs.getWidth() * 0.5f, fs.getCentreY() }, [&] { setParam (p, ParamIDs::flavor, 1.0f); });   // DORIAN
+        const float fl = dramatic ? 2.0f : 1.0f;   // HARMONIC / DORIAN
+        click (bar (3.55), { fs.getX() + fs.getWidth() * (fl + 0.5f) / 3.0f, fs.getCentreY() }, [&, fl] { setParam (p, ParamIDs::flavor, fl); });
         auto keys = ed.scaleInfo.withTrimmedTop (23).toFloat();
         auto key = [keys] (int k) { return juce::Point<float> (keys.getX() + keys.getWidth() / 12.0f * ((float) k + 0.5f), keys.getCentreY()); };
-        click (bar (4.15), key (2), [&] { p.toggleKey (2); });   // D dazu
-        click (bar (4.55), key (6), [&] { p.toggleKey (6); });   // F# weg
+        if (dramatic)
+        {
+            click (bar (4.15), key (1), [&] { p.toggleKey (1); });   // Db dazu
+            click (bar (4.55), key (2), [&] { p.toggleKey (2); });   // D weg
+        }
+        else
+        {
+            click (bar (4.15), key (2), [&] { p.toggleKey (2); });   // D dazu
+            click (bar (4.55), key (6), [&] { p.toggleKey (6); });   // F# weg
+        }
     }
 
     // Szene 3 (Bar 5-7): Length von INF auf 8
@@ -289,6 +346,21 @@ int ReelAccess::run (int argc, char** argv)
     juce::AudioBuffer<float> audio (2, totalSamples);
     audio.clear();
     AmbientSynth synth;
+    if (dramatic)
+    {
+        juce::AudioFormatManager fm;
+        fm.registerBasicFormats();
+        if (std::unique_ptr<juce::AudioFormatReader> rd { fm.createReaderFor (sampleFile) })
+        {
+            synth.sample.setSize ((int) rd->numChannels, (int) rd->lengthInSamples);
+            rd->read (&synth.sample, 0, (int) rd->lengthInSamples, 0, true, true);
+            synth.sampleRate = rd->sampleRate;
+        }
+        // Boom auf jedem Takt ab Takt 1
+        for (int b = 0; b < 11; ++b)
+            at (bar (b), [&] { synth.boom(); });
+        std::sort (ev.begin(), ev.end(), [] (auto& x, auto& y) { return x.t < y.t; });
+    }
     size_t evIdx = 0;
     int pos = 0;
     const int numFrames = (int) std::round (TOTAL * FPS);
@@ -309,7 +381,7 @@ int ReelAccess::run (int argc, char** argv)
             ph.timeSec = pos / SR;
             juce::MidiBuffer midi;
             none.setSize (0, n, false, false, true);
-            if (pos < (int) (GUI_UNTIL * SR + 0.5 * BAR * SR))   // gegen Ende keine neuen Noten mehr
+            if (pos < (int) (GUI_UNTIL * SR + (dramatic ? 0.9 : 0.5) * BAR * SR))   // gegen Ende keine neuen Noten mehr
                 p.processBlock (none, midi);
             auto it = midi.begin();
             for (int i = 0; i < n; ++i)
@@ -367,7 +439,8 @@ int ReelAccess::run (int argc, char** argv)
         juce::Reverb rev;
         rev.setSampleRate (SR);
         juce::Reverb::Parameters rp;
-        rp.roomSize = 0.92f; rp.damping = 0.55f; rp.wetLevel = 0.42f; rp.dryLevel = 0.72f; rp.width = 1.0f;
+        rp.roomSize = dramatic ? 0.86f : 0.92f; rp.damping = dramatic ? 0.75f : 0.55f;
+        rp.wetLevel = dramatic ? 0.34f : 0.42f; rp.dryLevel = 0.75f; rp.width = 1.0f;
         rev.setParameters (rp);
         rev.processStereo (audio.getWritePointer (0), audio.getWritePointer (1), totalSamples);
 
