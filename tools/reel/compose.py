@@ -27,6 +27,7 @@ FOCUS = {
     "scale": pad(union(R0["pitch"], R0["scale"]), 10),
     "loop":  pad(union(R0["loop"], R0["row1"], R0["row2"]), 8),
     "rv":    pad(union(R0["loop"], R0["vary"]), 10),
+    "rows":  pad(union(R0["row1"], R0["row4"]), 8),
     # rechte Haelfte: Kopfzeile (NEW) bis Kanal 4, mit VARY-Karte und Step-Anzeigen
     "notes": [R0["loop"][0] - 10, 4, gui[2] - R0["loop"][0] + 6, R0["row4"][1] + R0["row4"][3] + 8 - 4],
 }
@@ -39,6 +40,17 @@ SCENES = [  # start, ende, titel, untertitel, fokus, farbe
     (7 * BAR, 8.5 * BAR, "ADD RHYTHM", "random patterns that repeat", "rv", (77, 208, 225)),
     (8.5 * BAR, 10 * BAR, "LET IT DRIFT", "skip  ·  octave  ·  fifth", "notes", (255, 77, 94)),
 ]
+
+if D.get("long"):
+    SCENES = [
+        (0.0, 2 * BAR, "", "", "full", SLOT[0]),
+        (2 * BAR, 7 * BAR, "RANDOM NOTES", "always in key  ·  four voices", "notes", SLOT[0]),
+        (7 * BAR, 12 * BAR, "PICK A SCALE", "27 scales, or click your own notes", "scale", (255, 213, 79)),
+        (12 * BAR, 17 * BAR, "LIKE IT? LOOP IT", "turn Length down  ·  1 to 32 steps", "loop", (77, 208, 225)),
+        (17 * BAR, 21 * BAR, "ADD RHYTHM", "random patterns that repeat", "rv", (77, 208, 225)),
+        (21 * BAR, 26 * BAR, "LET IT DRIFT", "skip  ·  octave  ·  fifth", "notes", (255, 77, 94)),
+        (26 * BAR, 33 * BAR, "POLYMETER", "own loop length per voice", "rows", SLOT[3]),
+    ]
 
 def scene_at(t):
     for i, s in enumerate(SCENES):

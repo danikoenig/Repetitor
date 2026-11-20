@@ -12,7 +12,11 @@
 static constexpr double FPS = 30.0, SR = 48000.0;
 static double BPM = 84.0, BEAT = 0, BAR = 0, TOTAL = 0, GUI_UNTIL = 0;   // in run() gesetzt
 static bool dramatic = false;   // mit Sample (argv[3]): dunkler, dramatischer Sound
-static void setTempo (double bpm) { BPM = bpm; BEAT = 60.0 / BPM; BAR = 4.0 * BEAT; TOTAL = 12.0 * BAR; GUI_UNTIL = 10.0 * BAR; }
+static bool longMode = false;   // argv[4] == "long": 90-s-Version, A Moll, Sample eine Oktave hoeher, heller
+static void setTempo (double bpm, double bars, double guiBars)
+{
+    BPM = bpm; BEAT = 60.0 / BPM; BAR = 4.0 * BEAT; TOTAL = bars * BAR; GUI_UNTIL = guiBars * BAR;
+}
 
 //==============================================================================
 // Kleiner Ambient-Synth: Timbre je MIDI-Kanal
@@ -29,7 +33,7 @@ struct AmbientSynth
     juce::Random rnd { 7 };
     juce::AudioBuffer<float> sample;   // Sampler-Stimme (Kanal 2 und 3 im dramatischen Modus)
     double sampleRate = 48000.0;
-    int sampleRoot = 60;
+    int sampleRoot = 60;   // Note, auf der das Sample original klingt (48 = eine Oktave hoeher abspielen)
     bool isSampler (int ch) const { return dramatic && sample.getNumSamples() > 0 && (ch == 2 || ch == 3); }
 
     // Boom auf jedem Takt (nur dramatisch)
@@ -142,7 +146,8 @@ struct AmbientSynth
                     const double raw = 0.5 * (saw (v.ph1) + saw (v.ph2));
                     v.ph1 += tw * v.freq * 0.997 * dt;
                     v.ph2 += tw * v.freq * 1.003 * dt;
-                    const double cut = (dramatic ? 260.0 : 500.0) + (dramatic ? 160.0 : 350.0) * std::sin (v.lfo + v.t * 0.6);
+                    const double base = longMode ? 620.0 : dramatic ? 260.0 : 500.0;
+                    const double cut = base + (dramatic && ! longMode ? 160.0 : 320.0) * std::sin (v.lfo + v.t * 0.6);
                     const double a = 1.0 - std::exp (-tw * cut * dt);
                     v.lp1 += a * (raw - v.lp1);
                     v.lp2 += a * (v.lp1 - v.lp2);
@@ -162,8 +167,9 @@ struct AmbientSynth
             // tiefer Boom: Sinus 58 -> 36 Hz, lange Abklingzeit, kurzer Klick
             const double f = 36.0 + 22.0 * std::exp (-boomT * 9.0);
             boomPh += juce::MathConstants<double>::twoPi * f / SR;
-            const double b = std::sin (boomPh) * std::exp (-boomT * 2.2) * 0.85
-                           + (rnd.nextDouble() * 2.0 - 1.0) * std::exp (-boomT * 120.0) * 0.12;
+            const double b = longMode ? std::sin (boomPh) * std::exp (-boomT * 2.6) * 0.38
+                                      : std::sin (boomPh) * std::exp (-boomT * 2.2) * 0.85
+                                        + (rnd.nextDouble() * 2.0 - 1.0) * std::exp (-boomT * 120.0) * 0.12;
             L += b; R += b;
             boomT += 1.0 / SR;
         }
@@ -233,7 +239,10 @@ int ReelAccess::run (int argc, char** argv)
     const juce::int64 seed = argc > 2 ? juce::String (argv[2]).getLargeIntValue() : 2026;
     const juce::File sampleFile = argc > 3 ? juce::File (juce::String (argv[3])) : juce::File();
     dramatic = sampleFile.existsAsFile();
-    setTempo (dramatic ? 92.0 : 84.0);
+    longMode = argc > 4 && juce::String (argv[4]) == "long";
+    if (longMode)      setTempo (96.0, 36.0, 33.0);   // 90 s
+    else if (dramatic) setTempo (92.0, 12.0, 10.0);
+    else               setTempo (84.0, 12.0, 10.0);
     outDir.getChildFile ("frames").createDirectory();
 
     RepetitorProcessor p;
@@ -258,6 +267,15 @@ int ReelAccess::run (int argc, char** argv)
     const float src[] { 8.0f, 5.0f, 7.0f, 9.0f };
     float oct[] { -1.0f, 0.0f, 1.0f, 0.0f };
     if (dramatic) { oct[2] = 0.0f; oct[3] = -1.0f; setParam (p, ParamIDs::downUp, 0.4f); }
+    if (longMode)
+    {
+        // A Moll: startet mit den Akkordtoenen (FEW), dann MORE, dann ALL
+        setParam (p, ParamIDs::root, 9.0f);
+        setParam (p, ParamIDs::octave, 1.0f);        // A1 = 45 (Bitwig-Namen)
+        setParam (p, ParamIDs::count, 0.0f);
+        setParam (p, ParamIDs::downUp, 0.5f);
+        oct[0] = -1.0f; oct[1] = 0.0f; oct[2] = 1.0f; oct[3] = 0.0f;
+    }
     for (int c = 0; c < numChannels; ++c)
     {
         setParam (p, ParamIDs::chSrc (c), src[c]);
@@ -305,6 +323,38 @@ int ReelAccess::run (int argc, char** argv)
         }
     };
 
+    if (longMode)
+    {
+        auto keysR = ed.scaleInfo.withTrimmedTop (23).toFloat();
+        juce::ignoreUnused (keysR);
+        auto cs = in (ed, *ed.countSwitch).toFloat();
+        auto seg = [] (juce::Rectangle<float> r, int i) { return juce::Point<float> (r.getX() + r.getWidth() * ((float) i + 0.5f) / 3.0f, r.getCentreY()); };
+
+        // RANDOM NOTES (Bar 2-7): NEW
+        kf (bar (2.3), { 1000.0f, 330.0f });
+        click (bar (5.0), centre (in (ed, ed.newButton)), [&] { p.requestNew(); });
+        // PICK A SCALE (Bar 7-12): A Moll Akkordtoene -> Pentatonik -> ganze Skala
+        click (bar (8.4), seg (cs, 1), [&] { setParam (p, ParamIDs::count, 1.0f); });
+        click (bar (10.4), seg (cs, 2), [&] { setParam (p, ParamIDs::count, 2.0f); });
+        // LOOP (Bar 12-17)
+        knobDrag (ed.kLength.slider, ParamIDs::length, bar (13.0), bar (14.0), 11.0f, 6.0f, 46.0f);
+        // RHYTHM (Bar 17-21)
+        click (bar (17.8), centre (in (ed, ed.rhythmButton)), [&] { setParam (p, ParamIDs::rhythm, 1.0f); });
+        knobDrag (ed.kDensity.slider, ParamIDs::density, bar (18.6), bar (19.4), 0.5f, 0.72f, -30.0f);
+        // DRIFT (Bar 21-26)
+        knobDrag (ed.kOctChance.slider, ParamIDs::octChance, bar (21.8), bar (22.5), 0.0f, 0.35f, -40.0f);
+        knobDrag (ed.kFifth.slider, ParamIDs::fifth, bar (23.2), bar (23.8), 0.0f, 0.25f, -34.0f);
+        knobDrag (ed.kSkip.slider, ParamIDs::skip, bar (24.4), bar (24.9), 0.0f, 0.15f, -26.0f);
+        // POLYMETER (Bar 26-33): eigene Laenge pro Kanal
+        auto& r3 = *ed.rows[2];
+        auto& r4 = *ed.rows[3];
+        click (bar (27.2), centre (in (ed, r3.lenBox)), [&] { setParam (p, ParamIDs::chLen (2), 6.0f); });    // 6
+        click (bar (28.8), centre (in (ed, r4.lenBox)), [&] { setParam (p, ParamIDs::chLen (3), 8.0f); });    // 12
+        click (bar (30.4), centre (in (ed, ed.rows[1]->lenBox)), [&] { setParam (p, ParamIDs::chLen (1), 9.0f); });  // 16
+        kf (bar (31.5), { 1000.0f, 330.0f });
+    }
+    else
+    {
     // Szene 1 (Bar 1-3): zufaellige Noten, NEW klicken
     kf (bar (1.2), { 1000.0f, 330.0f });
     click (bar (2.1), centre (in (ed, ed.newButton)), [&] { p.requestNew(); });
@@ -339,6 +389,8 @@ int ReelAccess::run (int argc, char** argv)
     knobDrag (ed.kOctChance.slider, ParamIDs::octChance, bar (8.7), bar (9.15), 0.0f, 0.35f, -40.0f);
     knobDrag (ed.kFifth.slider, ParamIDs::fifth, bar (9.35), bar (9.75), 0.0f, 0.25f, -34.0f);
 
+    }
+
     std::sort (ev.begin(), ev.end(), [] (auto& x, auto& y) { return x.t < y.t; });
 
     // ---------------------------------------------------------------- Rendern
@@ -356,8 +408,11 @@ int ReelAccess::run (int argc, char** argv)
             rd->read (&synth.sample, 0, (int) rd->lengthInSamples, 0, true, true);
             synth.sampleRate = rd->sampleRate;
         }
+        if (longMode)
+            synth.sampleRoot = 48;   // Sample eine Oktave hoeher
         // Boom auf jedem Takt ab Takt 1
-        for (int b = 0; b < 11; ++b)
+        const int bars = (int) std::round (GUI_UNTIL / BAR) + 1;
+        for (int b = 0; b < bars; b += longMode ? 2 : 1)
             at (bar (b), [&] { synth.boom(); });
         std::sort (ev.begin(), ev.end(), [] (auto& x, auto& y) { return x.t < y.t; });
     }
@@ -439,8 +494,8 @@ int ReelAccess::run (int argc, char** argv)
         juce::Reverb rev;
         rev.setSampleRate (SR);
         juce::Reverb::Parameters rp;
-        rp.roomSize = dramatic ? 0.86f : 0.92f; rp.damping = dramatic ? 0.75f : 0.55f;
-        rp.wetLevel = dramatic ? 0.34f : 0.42f; rp.dryLevel = 0.75f; rp.width = 1.0f;
+        rp.roomSize = dramatic ? 0.88f : 0.92f; rp.damping = longMode ? 0.5f : dramatic ? 0.75f : 0.55f;
+        rp.wetLevel = longMode ? 0.4f : dramatic ? 0.34f : 0.42f; rp.dryLevel = 0.75f; rp.width = 1.0f;
         rev.setParameters (rp);
         rev.processStereo (audio.getWritePointer (0), audio.getWritePointer (1), totalSamples);
 
@@ -469,6 +524,7 @@ int ReelAccess::run (int argc, char** argv)
     root->setProperty ("bar", BAR);
     root->setProperty ("guiUntil", GUI_UNTIL);
     root->setProperty ("total", TOTAL);
+    root->setProperty ("long", longMode);
     root->setProperty ("cursor", cursor);
     root->setProperty ("rects", layout);
     outDir.getChildFile ("events.json").replaceWithText (juce::JSON::toString (juce::var (root)));
