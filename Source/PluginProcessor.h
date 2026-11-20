@@ -26,6 +26,12 @@ namespace ParamIDs
     inline const juce::String thru      { "thru" };
     inline const juce::String velocity  { "velocity" };
     inline const juce::String resetPlay { "resetOnPlay" };
+    inline const juce::String custom    { "customScale" };
+    inline const juce::String skip      { "skip" };
+    inline const juce::String octChance { "octChance" };
+    inline const juce::String octDir    { "octDir" };
+    inline const juce::String fifth     { "fifthChance" };
+    inline const juce::String mask      { "customMask" };   // eigene Skala, Bits relativ zum Root
 
     // Pro Kanal (1..4)
     inline juce::String chOn  (int c) { return "on"  + juce::String (c + 1); }
@@ -71,7 +77,7 @@ public:
    #ifndef REPETITOR_INSTRUMENT
     #define REPETITOR_INSTRUMENT 0
    #endif
-    const juce::String getName() const override { return REPETITOR_INSTRUMENT ? "Repetitor Inst" : "Repetitor"; }
+    const juce::String getName() const override { return REPETITOR_INSTRUMENT ? "Repetitor Instrument" : "Repetitor"; }
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return true; }
     bool isMidiEffect() const override { return ! REPETITOR_INSTRUMENT; }
@@ -108,7 +114,11 @@ public:
     // Hilfen fuer GUI und Test
     int effectiveLength (int ch) const;                      // 0 = unendlich
     int noteForValue (int ch, float v) const;
-    const Scales::Scale& currentScale() const;
+    int currentMask() const;                                 // aktive Skala als 12-Bit-Maske (relativ zum Root)
+    bool isCustom() const { return p (ParamIDs::custom) > 0.5f; }
+    juce::String scaleName() const;
+    void toggleKey (int pitchClass);                         // Taste auf dem Mini-Keyboard (C = 0 ... B = 11)
+    void usePresetScale();                                   // zurueck zu den Schaltern
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();

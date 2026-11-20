@@ -36,7 +36,7 @@ jobs:
         run: |
           mkdir -p ~/Library/Audio/Plug-Ins/Components
           cp -R "build/Repetitor_artefacts/Release/AU/Repetitor.component" ~/Library/Audio/Plug-Ins/Components/
-          cp -R "build/RepetitorInst_artefacts/Release/AU/Repetitor Inst.component" ~/Library/Audio/Plug-Ins/Components/
+          cp -R "build/RepetitorInst_artefacts/Release/AU/Repetitor Instrument.component" ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar 2>/dev/null || true
           sleep 2
           auval -a | grep -i "Dkng" || true
@@ -50,14 +50,16 @@ jobs:
           codesign --force --deep --sign - "$ART/VST3/Repetitor.vst3"
           codesign --force --deep --sign - "$ART/AU/Repetitor.component"
           INST=build/RepetitorInst_artefacts/Release
-          codesign --force --deep --sign - "$INST/VST3/Repetitor Inst.vst3"
-          codesign --force --deep --sign - "$INST/AU/Repetitor Inst.component"
+          codesign --force --deep --sign - "$INST/VST3/Repetitor Instrument.vst3"
+          codesign --force --deep --sign - "$INST/AU/Repetitor Instrument.component"
           mkdir -p dist "pkg/Repetitor"
           cp -R "$ART/VST3/Repetitor.vst3" "pkg/Repetitor/"
           cp -R "$ART/AU/Repetitor.component" "pkg/Repetitor/"
-          cp -R "$INST/VST3/Repetitor Inst.vst3" "pkg/Repetitor/"
-          cp -R "$INST/AU/Repetitor Inst.component" "pkg/Repetitor/"
+          cp -R "$INST/VST3/Repetitor Instrument.vst3" "pkg/Repetitor/"
+          cp -R "$INST/AU/Repetitor Instrument.component" "pkg/Repetitor/"
           cp INSTALL.txt "pkg/Repetitor/INSTALL.txt"
+          cp docs/Repetitor-Manual-EN.pdf docs/Repetitor-Manual-DE.pdf "pkg/Repetitor/"
+          cp docs/Repetitor-Manual-EN.pdf docs/Repetitor-Manual-DE.pdf dist/
           ditto -c -k --keepParent "pkg/Repetitor" "dist/Repetitor-macOS-arm64.zip"
 
       - name: Build installer (.pkg)
@@ -68,18 +70,19 @@ jobs:
           INST=build/RepetitorInst_artefacts/Release
           mkdir -p pkgroot build/pkg
           cp -R "$ART/VST3/Repetitor.vst3" pkgroot/
-          cp -R "$INST/VST3/Repetitor Inst.vst3" pkgroot/
+          cp -R "$INST/VST3/Repetitor Instrument.vst3" pkgroot/
           # Bundle nicht umleiten (sonst installiert macOS ggf. an einen alten Ort)
           pkgbuild --analyze --root pkgroot build/pkg/component.plist
           plutil -replace 0.BundleIsRelocatable -bool NO build/pkg/component.plist
           plutil -replace 1.BundleIsRelocatable -bool NO build/pkg/component.plist
-          pkgbuild --root pkgroot --component-plist build/pkg/component.plist \
+          chmod +x installer/scripts/preinstall
+          pkgbuild --root pkgroot --component-plist build/pkg/component.plist --scripts installer/scripts \
             --identifier ch.danikoenig.repetitor.vst3 --version "$VERSION" \
             --install-location "/Library/Audio/Plug-Ins/VST3" build/pkg/RepetitorVST3.pkg
           # AU-Paket
           mkdir -p pkgroot-au
           cp -R "$ART/AU/Repetitor.component" pkgroot-au/
-          cp -R "$INST/AU/Repetitor Inst.component" pkgroot-au/
+          cp -R "$INST/AU/Repetitor Instrument.component" pkgroot-au/
           pkgbuild --analyze --root pkgroot-au build/pkg/component-au.plist
           plutil -replace 0.BundleIsRelocatable -bool NO build/pkg/component-au.plist
           plutil -replace 1.BundleIsRelocatable -bool NO build/pkg/component-au.plist
@@ -110,6 +113,7 @@ jobs:
           path: |
             dist/*.zip
             dist/*.pkg
+            dist/*.pdf
 
       - name: Release (bei Tag v* oder Commit mit [release])
         if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))
@@ -123,6 +127,7 @@ jobs:
           files: |
             dist/*.zip
             dist/*.pkg
+            dist/*.pdf
 
       - name: Remove older releases (only the newest stays)
         if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))

@@ -41,6 +41,8 @@ APVTS::ParameterLayout RepetitorProcessor::createLayout()
     l.add (std::make_unique<juce::AudioParameterChoice> (id (family), "Maj/Min/Sym", juce::StringArray { "Major", "Minor", "Symmetric" }, 1));
     l.add (std::make_unique<juce::AudioParameterChoice> (id (flavor), "Flavor", juce::StringArray { "L", "C", "R" }, 0));
     l.add (std::make_unique<juce::AudioParameterChoice> (id (count), "Count", juce::StringArray { "Few", "More", "All" }, 1));
+    l.add (std::make_unique<juce::AudioParameterBool> (id (custom), "Custom Scale", false));
+    l.add (std::make_unique<juce::AudioParameterInt> (id (mask), "Custom Notes", 1, 4095, Scales::maskOf (Scales::get (1, 0, 1))));
 
     // Loop / Rhythmus
     l.add (std::make_unique<juce::AudioParameterChoice> (id (length), "Length", lengthNames, 11));
@@ -48,6 +50,13 @@ APVTS::ParameterLayout RepetitorProcessor::createLayout()
     l.add (std::make_unique<juce::AudioParameterFloat> (id (density), "Density", juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.5f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return juce::String (juce::roundToInt (v * 100.0f)) + "%"; })));
     l.add (std::make_unique<juce::AudioParameterChoice> (id (gate), "Gate", gateNames, 3));
+
+    // Variation (wird bei jedem Trigger neu gewuerfelt, auch im Loop)
+    auto pct = juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return juce::String (juce::roundToInt (v * 100.0f)) + "%"; });
+    l.add (std::make_unique<juce::AudioParameterFloat> (id (skip), "Skip Chance", juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f, pct));
+    l.add (std::make_unique<juce::AudioParameterFloat> (id (octChance), "Octave Chance", juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f, pct));
+    l.add (std::make_unique<juce::AudioParameterChoice> (id (octDir), "Octave Direction", juce::StringArray { "DOWN", "BOTH", "UP" }, 1));
+    l.add (std::make_unique<juce::AudioParameterFloat> (id (fifth), "Fifth Chance", juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f, pct));
 
     // MIDI
     l.add (std::make_unique<juce::AudioParameterChoice> (id (inMode), "Input", juce::StringArray { "ANY NOTE", "C1-D#1" }, 0));
@@ -92,9 +101,43 @@ void RepetitorProcessor::prepareToPlay (double sampleRate, int)
 }
 
 //==============================================================================
-const Scales::Scale& RepetitorProcessor::currentScale() const
+int RepetitorProcessor::currentMask() const
 {
-    return Scales::get ((int) p (ParamIDs::family), (int) p (ParamIDs::flavor), (int) p (ParamIDs::count));
+    if (isCustom())
+        return ((int) p (ParamIDs::mask)) | 1;
+    return Scales::maskOf (Scales::get ((int) p (ParamIDs::family), (int) p (ParamIDs::flavor), (int) p (ParamIDs::count)));
+}
+
+juce::String RepetitorProcessor::scaleName() const
+{
+    if (isCustom())
+        return "Custom";
+    return Scales::get ((int) p (ParamIDs::family), (int) p (ParamIDs::flavor), (int) p (ParamIDs::count)).name;
+}
+
+static void setParam (juce::AudioProcessorValueTreeState& a, const juce::String& id, float plain)
+{
+    auto* prm = a.getParameter (id);
+    prm->beginChangeGesture();
+    prm->setValueNotifyingHost (prm->convertTo0to1 (plain));
+    prm->endChangeGesture();
+}
+
+void RepetitorProcessor::toggleKey (int pitchClass)
+{
+    const int rel = ((pitchClass - (int) p (ParamIDs::root)) % 12 + 12) % 12;
+    if (rel == 0)
+        return;   // Grundton bleibt immer drin
+    const int m = currentMask() ^ (1 << rel);
+    setParam (apvts, ParamIDs::mask, (float) (m | 1));
+    if (! isCustom())
+        setParam (apvts, ParamIDs::custom, 1.0f);
+}
+
+void RepetitorProcessor::usePresetScale()
+{
+    if (isCustom())
+        setParam (apvts, ParamIDs::custom, 0.0f);
 }
 
 int RepetitorProcessor::effectiveLength (int ch) const
@@ -106,7 +149,7 @@ int RepetitorProcessor::effectiveLength (int ch) const
 
 int RepetitorProcessor::noteForValue (int ch, float v) const
 {
-    const int off = Scales::quantize (v, (int) p (ParamIDs::spread), p (ParamIDs::downUp), currentScale().degrees);
+    const int off = Scales::quantize (v, (int) p (ParamIDs::spread), p (ParamIDs::downUp), currentMask());
     const int base = ((int) p (ParamIDs::octave) + 2) * 12 + (int) p (ParamIDs::root);
     return juce::jlimit (0, 127, base + (int) p (ParamIDs::chOct (ch)) * 12 + off);
 }
@@ -175,12 +218,23 @@ void RepetitorProcessor::trigger (int ch, int offset, int velocity, int inNote, 
     v.playIndex.store (idx);
     v.flash.fetch_add (1);
 
-    const int note = noteForValue (ch, v.pitch[(size_t) idx].load());
+    int note = noteForValue (ch, v.pitch[(size_t) idx].load());
+
+    // Variation: frisch gewuerfelt, damit der Loop nicht statisch wird
+    const bool skipped = rng.nextFloat() < p (ParamIDs::skip);
+    if (rng.nextFloat() < p (ParamIDs::octChance))
+    {
+        const int dir = (int) p (ParamIDs::octDir);
+        const int jump = dir == 0 ? -12 : dir == 2 ? 12 : (rng.nextBool() ? 12 : -12);
+        if (note + jump >= 0 && note + jump <= 127) note += jump;
+    }
+    if (rng.nextFloat() < p (ParamIDs::fifth) && note + 7 <= 127)
+        note += 7;
     v.lastNote.store (note);
 
     const bool on = p (ParamIDs::chOn (ch)) > 0.5f;
     const bool rhythm = p (ParamIDs::rhythm) > 0.5f;
-    const bool fire = on && (! rhythm || v.gate[(size_t) idx].load() < p (ParamIDs::density));
+    const bool fire = on && ! skipped && (! rhythm || v.gate[(size_t) idx].load() < p (ParamIDs::density));
     if (! fire)
         return;
 

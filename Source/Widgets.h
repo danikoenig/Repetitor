@@ -14,6 +14,8 @@ public:
         att.sendInitialUpdate();
     }
 
+    void setDimmed (bool d) { if (d != dimmed) { dimmed = d; repaint(); } }
+
     void setLabels (const juce::StringArray& l)
     {
         if (l != labels) { labels = l; repaint(); }
@@ -35,7 +37,7 @@ public:
             const bool on = i == selected;
             if (on)
             {
-                g.setColour (colour.withAlpha (0.9f));
+                g.setColour (dimmed ? colour.withAlpha (0.25f) : colour.withAlpha (0.9f));
                 g.fillRoundedRectangle (seg, 4.0f);
             }
             else if (i == hover)
@@ -43,7 +45,7 @@ public:
                 g.setColour (cardBorder);
                 g.fillRoundedRectangle (seg, 4.0f);
             }
-            g.setColour (on ? bgBottom : textDim);
+            g.setColour (on ? (dimmed ? text.withAlpha (0.7f) : bgBottom) : textDim);
             g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
             g.drawFittedText (labels[i], seg.toNearestInt(), juce::Justification::centred, 1, 0.6f);
         }
@@ -53,7 +55,10 @@ public:
     {
         const int i = juce::jlimit (0, labels.size() - 1, (int) ((float) e.x / (float) getWidth() * (float) labels.size()));
         att.setValueAsCompleteGesture ((float) i);
+        if (onClick) onClick();
     }
+
+    std::function<void()> onClick;
     void mouseMove (const juce::MouseEvent& e) override
     {
         const int h = (int) ((float) e.x / (float) getWidth() * (float) labels.size());
@@ -65,6 +70,7 @@ private:
     juce::StringArray labels;
     juce::Colour colour;
     int selected = 0, hover = -1;
+    bool dimmed = false;
     juce::ParameterAttachment att;
 };
 
@@ -92,7 +98,7 @@ public:
         const bool on = proc.apvts.getRawParameterValue (ParamIDs::chOn (ch))->load() > 0.5f;
         const int spread = (int) proc.apvts.getRawParameterValue (ParamIDs::spread)->load();
         const float du = proc.apvts.getRawParameterValue (ParamIDs::downUp)->load();
-        const auto& degrees = proc.currentScale().degrees;
+        const int mask = proc.currentMask();
         const int lo = (int) std::lround ((float) spread * (du - 1.0f) * 0.5f);
 
         auto inner = r.reduced (6.0f, 6.0f);
@@ -113,7 +119,7 @@ public:
             const int idx = (head + 1 + j) % maxSteps;
             const float pv = v.pitch[(size_t) idx].load();
             const float gv = v.gate[(size_t) idx].load();
-            const int off = Scales::quantize (pv, spread, du, degrees);
+            const int off = Scales::quantize (pv, spread, du, mask);
             const float h = spread > 0 ? (float) (off - lo) / (float) spread : 0.5f;
             const bool inLoop = len == 0 ? (j == maxSteps - 1) : (j >= maxSteps - len);
             const bool fires = ! rhythm || gv < density;

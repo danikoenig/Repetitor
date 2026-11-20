@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Repetitor VERSION 0.2.0)
+project(Repetitor VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,7 +20,7 @@ endif()
 
 # Zwei Varianten aus demselben Code:
 #  Repetitor       MIDI-Effekt (Bitwig, Logic MIDI FX, Reaper ...)
-#  Repetitor Inst  Instrument mit MIDI-Ausgang (Ableton Live: auf eigener Spur, andere Spuren holen "MIDI From")
+#  Repetitor Instrument  Instrument mit MIDI-Ausgang (Ableton Live: auf eigener Spur, andere Spuren holen "MIDI From")
 function(repetitor_target target product code bundle au_type is_instr)
     if(is_instr)
         set(midi_fx FALSE)
@@ -69,7 +69,7 @@ function(repetitor_target target product code bundle au_type is_instr)
 endfunction()
 
 repetitor_target(Repetitor     "Repetitor"      Rpt1 repetitor     kAudioUnitType_MIDIProcessor FALSE)
-repetitor_target(RepetitorInst "Repetitor Inst" Rpt2 repetitorinst kAudioUnitType_MusicDevice   TRUE)
+repetitor_target(RepetitorInst "Repetitor Instrument" Rpt2 repetitorinst kAudioUnitType_MusicDevice   TRUE)
 
 # Optionaler Test (nur lokal): -DREPETITOR_TEST_SRC=tests/EngineTest.cpp
 if(REPETITOR_TEST_SRC)

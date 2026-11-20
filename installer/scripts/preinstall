@@ -1,0 +1,8 @@
+#!/bin/bash
+# Alte Version «Repetitor Inst» (bis v0.2.0) entfernen, heisst jetzt «Repetitor Instrument»
+for base in "/Library" /Users/*/Library; do
+  [ -d "$base" ] || continue
+  rm -rf "$base/Audio/Plug-Ins/VST3/Repetitor Inst.vst3"
+  rm -rf "$base/Audio/Plug-Ins/Components/Repetitor Inst.component"
+done
+exit 0

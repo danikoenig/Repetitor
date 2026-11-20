@@ -40,6 +40,11 @@ public:
 private:
     void timerCallback() override;
     void updateLengthColour();
+    int keyAt (juce::Point<int>) const;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseMove (const juce::MouseEvent&) override;
+    void mouseExit (const juce::MouseEvent&) override;
+    int hoverKey = -1;
 
     RepetitorProcessor& processor;
     RepLookAndFeel lnf;
@@ -55,6 +60,9 @@ private:
     Knob kLength, kDensity;
     juce::ToggleButton rhythmButton { "RHYTHM" };
     juce::ComboBox gateBox;
+    // Vary
+    Knob kSkip, kOctChance, kFifth;
+    std::unique_ptr<ChoiceSwitch> octDirSwitch;
     // MIDI
     juce::ComboBox inBox;
     juce::ToggleButton thruButton { "THRU" }, resetPlayButton { "RESET ON PLAY" };
@@ -65,7 +73,7 @@ private:
 
     std::array<std::unique_ptr<ChannelRow>, numChannels> rows;
 
-    juce::Rectangle<int> secPitch, secScale, secLoop, secMidi, scaleInfo, gateLabel, inLabel;
+    juce::Rectangle<int> secPitch, secScale, secLoop, secVary, secMidi, octDirLabel, scaleInfo, gateLabel, inLabel;
     int shownScale = -1, shownRoot = -1, shownLen = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RepetitorEditor)

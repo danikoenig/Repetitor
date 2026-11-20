@@ -156,6 +156,51 @@ int main()
     CHECK (same, "Loops werden im Projekt gespeichert");
     CHECK ((int) q.apvts.getRawParameterValue (ParamIDs::chSrc (0))->load() == 3, "Parameter werden gespeichert");
 
+    // Eigene Skala: nur Root (D) und A -> nur D und A
+    setP (p, ParamIDs::chSrc (0), 0.0f);
+    ph.playing = false;
+    setP (p, ParamIDs::root, 2.0f);
+    p.toggleKey (2);   // Root: bleibt drin
+    CHECK (! p.isCustom(), "Klick auf Root aendert nichts");
+    for (int k = 0; k < 12; ++k)
+        if (k != 2 && (p.currentMask() & (1 << ((k - 2 + 12) % 12))) != 0)
+            p.toggleKey (k);
+    p.toggleKey (9);   // A dazu
+    CHECK (p.isCustom() && p.currentMask() == ((1 << 0) | (1 << 7)), "eigene Skala D + A");
+    bool onlyDA = true;
+    for (int i = 0; i < 20; ++i) for (auto [c, nn] : run (p, 512, { 0 })) onlyDA &= (nn % 12 == 2 || nn % 12 == 9);
+    CHECK (onlyDA, "nur D und A werden gespielt");
+    setP (p, ParamIDs::root, 4.0f);
+    bool moved = true;
+    for (int i = 0; i < 20; ++i) for (auto [c, nn] : run (p, 512, { 0 })) moved &= (nn % 12 == 4 || nn % 12 == 11);
+    CHECK (moved, "eigene Skala wandert mit dem Root (E + B)");
+    p.usePresetScale();
+    CHECK (! p.isCustom(), "Schalter -> zurueck zu den Presets");
+    setP (p, ParamIDs::root, 2.0f);
+    p.toggleKey (5); p.toggleKey (0);   // F weg, C dazu -> Custom fuer Screenshot
+
+    // Variation: nur D, Oktave UP 100% -> D eine Oktave hoeher; 5th 100% -> A; Skip 100% -> nichts
+    {
+        for (int k = 0; k < 12; ++k) if (k != 2 && (p.currentMask() & (1 << ((k - 2 + 12) % 12)))) p.toggleKey (k);
+        setP (p, ParamIDs::spread, 0.0f);
+        for (int c = 0; c < numChannels; ++c) setP (p, ParamIDs::chOn (c), 1.0f);
+        CHECK (run (p, 512, { 0 })[0].second == 62, "nur D, Spread 0 -> D3");
+        setP (p, ParamIDs::octChance, 1.0f); setP (p, ParamIDs::octDir, 2.0f);
+        CHECK (run (p, 512, { 0 })[0].second == 74, "Oktave 100% UP -> D4");
+        setP (p, ParamIDs::fifth, 1.0f);
+        CHECK (run (p, 512, { 0 })[0].second == 81, "Oktave + Quinte -> A4");
+        setP (p, ParamIDs::octChance, 0.0f); setP (p, ParamIDs::fifth, 0.0f);
+        setP (p, ParamIDs::skip, 1.0f);
+        CHECK (run (p, 512, { 0 }).empty(), "Skip 100% -> keine Noten");
+        setP (p, ParamIDs::skip, 0.3f);
+        int played = 0;
+        for (int i = 0; i < 200; ++i) played += (int) run (p, 512, { 0 }).size();
+        CHECK (played > 450 && played < 670, "Skip 30% -> ca. 70% gespielt (" + juce::String (played) + "/800)");
+        setP (p, ParamIDs::skip, 0.15f); setP (p, ParamIDs::octChance, 0.3f); setP (p, ParamIDs::fifth, 0.2f);
+        setP (p, ParamIDs::spread, 12.0f);
+        p.toggleKey (9);   // A dazu, fuer Screenshot
+    }
+
     // GUI erstellen
     {
         std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());

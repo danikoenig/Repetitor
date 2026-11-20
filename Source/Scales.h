@@ -70,15 +70,26 @@ namespace Scales
     // Zufallswert v (0..1) -> Halbton-Offset zum Grundton.
     // Fenster: Spread Halbtoene breit, Down/Up (-1..+1) schiebt es unter / ueber den Grundton.
     // Alle Skalentoene im Fenster sind gleich wahrscheinlich.
-    inline int quantize (float v, int spread, float downUp, const std::vector<int>& degrees)
+    // 12-Bit-Maske: Bit d = Halbton d ueber dem Grundton ist in der Skala
+    inline int maskOf (const Scale& s)
     {
+        int m = 0;
+        for (int d : s.degrees) m |= 1 << d;
+        return m;
+    }
+
+    inline int quantize (float v, int spread, float downUp, int mask)
+    {
+        mask |= 1;   // Grundton immer dabei
         const int lo = (int) std::lround ((float) spread * (downUp - 1.0f) * 0.5f);
         const int hi = lo + spread;
         int notes[64];
         int n = 0;
         for (int oct = -3; oct <= 3 && n < 64; ++oct)
-            for (int d : degrees)
+            for (int d = 0; d < 12; ++d)
             {
+                if ((mask & (1 << d)) == 0)
+                    continue;
                 const int s = oct * 12 + d;
                 if (s >= lo && s <= hi && n < 64)
                     notes[n++] = s;

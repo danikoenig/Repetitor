@@ -16,7 +16,7 @@ REQUIREMENTS
 - A DAW: any DAW with VST3 (Bitwig, Ableton Live, Cubase, Studio One,
   Reaper ...) or with Audio Units (Logic Pro, GarageBand).
   Repetitor comes in both formats.
-  Ableton Live: use "Repetitor Inst" (see "How to use").
+  Ableton Live: use "Repetitor Instrument" (see "How to use").
 
 There are two ways to install. Way A is the easiest.
 
@@ -119,8 +119,8 @@ HOW TO USE (SHORT)
 Repetitor is a MIDI effect: MIDI notes go in, new notes come out.
 - Bitwig: put Repetitor on an instrument track BEFORE the instrument.
   Logic Pro: MIDI FX slot > Audio Units > Dani Koenig > Repetitor.
-  Ableton Live: load "Repetitor Inst" on MIDI track 1. On MIDI track 2
-  with your synth set "MIDI From" to track 1 > "Repetitor Inst" and
+  Ableton Live: load "Repetitor Instrument" on MIDI track 1. On MIDI track 2
+  with your synth set "MIDI From" to track 1 > "Repetitor Instrument" and
   Monitor to "In". Ableton sends all four voices to that one track.
 - Play or draw notes: every incoming note is a trigger. Repetitor picks
   a random note in the chosen scale (Root, Spread, Down/Up).
@@ -131,6 +131,9 @@ Repetitor is a MIDI effect: MIDI notes go in, new notes come out.
   last 1-32 notes. Like what you hear? Keep it.
 - NEW: roll new notes. RESET: start the loops from step 1.
 - RHYTHM: random repeating rhythm, DENSITY sets how many steps play.
+- Click keys on the mini keyboard to build your own scale.
+- VARY: Skip, Octave and 5th chance for variation.
+- Full manual: Repetitor-Manual-EN.pdf
 - Your loops are saved with the project.
 
 
@@ -184,7 +187,7 @@ VORAUSSETZUNGEN
 - Eine DAW: jede DAW mit VST3 (Bitwig, Ableton Live, Cubase, Studio One,
   Reaper ...) oder mit Audio Units (Logic Pro, GarageBand).
   Repetitor gibt es in beiden Formaten.
-  Ableton Live: nimm "Repetitor Inst" (siehe "Kurz zur Bedienung").
+  Ableton Live: nimm "Repetitor Instrument" (siehe "Kurz zur Bedienung").
 
 Es gibt zwei Wege. Weg A ist der einfachste.
 
@@ -288,8 +291,8 @@ KURZ ZUR BEDIENUNG
 Repetitor ist ein MIDI-Effekt: MIDI-Noten rein, neue Noten raus.
 - Bitwig: Repetitor auf einer Instrumentenspur VOR das Instrument legen.
   Logic Pro: MIDI-FX-Slot > Audio Units > Dani Koenig > Repetitor.
-  Ableton Live: "Repetitor Inst" auf MIDI-Spur 1 laden. Auf MIDI-Spur 2
-  mit deinem Synth "MIDI From" auf Spur 1 > "Repetitor Inst" stellen und
+  Ableton Live: "Repetitor Instrument" auf MIDI-Spur 1 laden. Auf MIDI-Spur 2
+  mit deinem Synth "MIDI From" auf Spur 1 > "Repetitor Instrument" stellen und
   Monitor auf "In". Ableton schickt alle vier Stimmen auf diese eine Spur.
 - Noten spielen oder zeichnen: Jede Eingangsnote ist ein Trigger. Repetitor
   wählt eine zufaellige Note in der Skala (Root, Spread, Down/Up).
@@ -301,6 +304,9 @@ Repetitor ist ein MIDI-Effekt: MIDI-Noten rein, neue Noten raus.
 - NEW: neue Noten würfeln. RESET: Loops ab Schritt 1 starten.
 - RHYTHM: zufälliger, sich wiederholender Rhythmus, DENSITY = wie viele
   Schritte spielen.
+- Tasten auf der Mini-Tastatur anklicken = eigene Skala.
+- VARY: Skip, Oktave und Quinte mit Wahrscheinlichkeit für Variation.
+- Ganzes Manual: Repetitor-Manual-DE.pdf
 - Deine Loops werden mit dem Projekt gespeichert.
 
 

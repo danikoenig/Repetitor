@@ -5,7 +5,7 @@ using namespace RepColours;
 
 namespace
 {
-    constexpr int W = 1000;
+    constexpr int W = 1200;
     constexpr int H = 676;
     constexpr int margin = 14;
     constexpr int headerH = 50;
@@ -17,6 +17,7 @@ namespace
     const juce::Colour scaleCol = env;          // Gelb
     const juce::Colour loopCol  = delayCol;     // Tuerkis
     const juce::Colour midiCol  = reverbCol;    // Lavendel
+    const juce::Colour varyCol  = clip;         // Rot
 
     void drawCard (juce::Graphics& g, juce::Rectangle<int> r, const juce::String& title, juce::Colour c)
     {
@@ -202,6 +203,8 @@ RepetitorEditor::RepetitorEditor (RepetitorProcessor& p)
     countSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter (ParamIDs::count),  juce::StringArray { "FEW", "MORE", "ALL" }, scaleCol);
     for (auto* s : { famSwitch.get(), flavSwitch.get(), countSwitch.get() })
         addAndMakeVisible (s);
+    for (auto* s : { famSwitch.get(), flavSwitch.get(), countSwitch.get() })
+        s->onClick = [this] { processor.usePresetScale(); };
     famSwitch->setTooltip ("Major, minor or symmetric scales");
     flavSwitch->setTooltip ("Style of the scale");
     countSwitch->setTooltip ("Number of notes: few (chord tones), more (pentatonic), all");
@@ -226,6 +229,17 @@ RepetitorEditor::RepetitorEditor (RepetitorProcessor& p)
     gateBox.setTooltip ("Note length. INPUT: as long as the incoming note is held (Clock channels use 1/16).");
     addAndMakeVisible (gateBox);
     gateAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (a, ParamIDs::gate, gateBox);
+
+    // Vary
+    kSkip.setup      (*this, a, ParamIDs::skip,      "Skip",   varyCol, true);
+    kOctChance.setup (*this, a, ParamIDs::octChance, "Octave", varyCol, true);
+    kFifth.setup     (*this, a, ParamIDs::fifth,     "5th",    varyCol, true);
+    kSkip.slider.setTooltip ("Chance that a note is left out. Rolled fresh on every trigger, also when looping.");
+    kOctChance.slider.setTooltip ("Chance that a note jumps one octave (direction below). Rolled fresh on every trigger.");
+    kFifth.slider.setTooltip ("Chance that a perfect fifth (+7 semitones) is played instead. Rolled fresh on every trigger.");
+    octDirSwitch = std::make_unique<ChoiceSwitch> (*a.getParameter (ParamIDs::octDir), juce::StringArray { "DOWN", "BOTH", "UP" }, varyCol);
+    octDirSwitch->setTooltip ("Direction of the octave jumps");
+    addAndMakeVisible (*octDirSwitch);
 
     // MIDI
     inBox.addItemList ({ "ANY NOTE", "C1-D#1" }, 1);
@@ -283,13 +297,15 @@ void RepetitorEditor::paint (juce::Graphics& g)
     g.drawText ("REPETITOR", margin + 2, 10, 220, 30, juce::Justification::centredLeft);
     g.setColour (textDim);
     g.setFont (juce::FontOptions (11.5f));
-    g.drawText (juce::String (REPETITOR_INSTRUMENT ? "INST  /  " : "") + "quad random quantized note generator  /  by Dani Koenig",
+    g.drawText (juce::String (REPETITOR_INSTRUMENT ? "INSTRUMENT  /  " : "") + "quad random quantized note generator  /  by Dani Koenig",
                 margin + 172, 14, 460, 24, juce::Justification::centredLeft);
 
     drawCard (g, secPitch, "PITCH", pitchCol);
     drawCard (g, secScale, "SCALE", scaleCol);
     drawCard (g, secLoop,  "LOOP",  loopCol);
+    drawCard (g, secVary,  "VARY",  varyCol);
     drawCard (g, secMidi,  "MIDI",  midiCol);
+    smallLabel (g, "OCT", octDirLabel);
 
     // Skalen-Schalter beschriften
     smallLabel (g, "MODE",   famSwitch->getBounds().withX (secScale.getX() + 14).withWidth (60));
@@ -299,16 +315,19 @@ void RepetitorEditor::paint (juce::Graphics& g)
     smallLabel (g, "INPUT",  inLabel);
 
     // Skalenname + Mini-Keyboard mit den Skalentoenen
-    const auto& sc = processor.currentScale();
+    const int mask = processor.currentMask();
+    const bool custom = processor.isCustom();
     const int root = (int) processor.apvts.getRawParameterValue (ParamIDs::root)->load();
     auto info = scaleInfo;
     g.setColour (text);
     g.setFont (juce::FontOptions (13.5f, juce::Font::bold));
-    g.drawText (noteNames[root] + " " + sc.name, info.removeFromTop (18), juce::Justification::centredLeft);
+    auto nameRow = info.removeFromTop (18);
+    g.drawText (noteNames[root] + " " + processor.scaleName(), nameRow, juce::Justification::centredLeft);
+    smallLabel (g, custom ? "CLICK KEYS / SWITCH = PRESETS" : "CLICK KEYS TO EDIT", nameRow, juce::Justification::centredRight);
     info.removeFromTop (5);
 
     bool inScale[12] {};
-    for (int d : sc.degrees) inScale[(root + d) % 12] = true;
+    for (int d = 0; d < 12; ++d) if (mask & (1 << d)) inScale[(root + d) % 12] = true;
     const bool black[12] { false, true, false, true, false, false, true, false, true, false, true, false };
     const float kw = (float) info.getWidth() / 12.0f;
     for (int i = 0; i < 12; ++i)
@@ -318,10 +337,49 @@ void RepetitorEditor::paint (juce::Graphics& g)
         g.setColour (inScale[i] ? (isRoot ? accent : scaleCol.withAlpha (black[i] ? 0.65f : 0.9f))
                                 : (black[i] ? inset : knobTrack));
         g.fillRoundedRectangle (k, 3.0f);
+        if (i == hoverKey && ! isRoot)
+        {
+            g.setColour (text.withAlpha (0.6f));
+            g.drawRoundedRectangle (k, 3.0f, 1.2f);
+        }
         g.setColour (inScale[i] ? bgBottom : textDim.withAlpha (0.7f));
         g.setFont (juce::FontOptions (8.5f, juce::Font::bold));
         g.drawText (noteNames[i], k.toNearestInt(), juce::Justification::centredBottom);
     }
+}
+
+int RepetitorEditor::keyAt (juce::Point<int> pos) const
+{
+    auto keys = scaleInfo.withTrimmedTop (23);
+    if (! keys.contains (pos))
+        return -1;
+    return juce::jlimit (0, 11, (int) ((float) (pos.x - keys.getX()) / ((float) keys.getWidth() / 12.0f)));
+}
+
+void RepetitorEditor::mouseDown (const juce::MouseEvent& e)
+{
+    const int k = keyAt (e.getPosition());
+    if (k >= 0)
+    {
+        processor.toggleKey (k);
+        repaint (scaleInfo.expanded (4));
+    }
+}
+
+void RepetitorEditor::mouseMove (const juce::MouseEvent& e)
+{
+    const int k = keyAt (e.getPosition());
+    if (k != hoverKey)
+    {
+        hoverKey = k;
+        setMouseCursor (k >= 0 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+        repaint (scaleInfo.expanded (4));
+    }
+}
+
+void RepetitorEditor::mouseExit (const juce::MouseEvent&)
+{
+    if (hoverKey >= 0) { hoverKey = -1; repaint (scaleInfo.expanded (4)); }
 }
 
 void RepetitorEditor::resized()
@@ -336,6 +394,7 @@ void RepetitorEditor::resized()
     secPitch = global.removeFromLeft (282);  global.removeFromLeft (10);
     secScale = global.removeFromLeft (290);  global.removeFromLeft (10);
     secLoop  = global.removeFromLeft (182);  global.removeFromLeft (10);
+    secVary  = global.removeFromLeft (190);  global.removeFromLeft (10);
     secMidi  = global;
 
     // Pitch: 4 Knobs
@@ -365,6 +424,15 @@ void RepetitorEditor::resized()
         gateLabel = row.removeFromLeft (38);
         gateBox.setBounds (row);
     }
+    // Vary
+    {
+        auto a = secVary.reduced (12, 0).withTrimmedTop (36);
+        Knob::layoutRow (a.removeFromTop (88), { &kSkip, &kOctChance, &kFifth }, 14);
+        a.removeFromTop (34);
+        auto row = a.removeFromTop (26);
+        octDirLabel = row.removeFromLeft (30);
+        octDirSwitch->setBounds (row);
+    }
     // MIDI
     {
         auto a = secMidi.reduced (12, 0).withTrimmedTop (36);
@@ -392,10 +460,13 @@ void RepetitorEditor::timerCallback()
 {
     auto& a = processor.apvts;
     const int fam = (int) a.getRawParameterValue (ParamIDs::family)->load();
+    for (auto* s : { famSwitch.get(), flavSwitch.get(), countSwitch.get() })
+        s->setDimmed (processor.isCustom());
     flavSwitch->setLabels ({ Scales::flavorName (fam, 0), Scales::flavorName (fam, 1), Scales::flavorName (fam, 2) });
 
-    const int sIdx = Scales::index (fam, (int) a.getRawParameterValue (ParamIDs::flavor)->load(),
-                                    (int) a.getRawParameterValue (ParamIDs::count)->load());
+    const int sIdx = processor.isCustom() ? 1000 + processor.currentMask()
+                                          : Scales::index (fam, (int) a.getRawParameterValue (ParamIDs::flavor)->load(),
+                                                           (int) a.getRawParameterValue (ParamIDs::count)->load());
     const int root = (int) a.getRawParameterValue (ParamIDs::root)->load();
     if (sIdx != shownScale || root != shownRoot)
     {

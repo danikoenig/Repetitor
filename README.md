@@ -17,8 +17,10 @@ When you hear something you like, turn Length down to loop the most recent notes
 - **Input mode**: ANY NOTE triggers all MIDI IN channels, or C1-D#1 for one note per channel
 - **Pitch**: Root, Octave, Spread (0 to 24 semitones), Down/Up (above, around or below the root), Octave offset per channel
 - **27 scales** on three switches like the module: MAJ / MIN / SYM, Flavor, Count (few, more, all notes)
+- **Custom scale**: click the keys of the mini keyboard to add or remove notes. The root always stays in, the scale moves with Root
 - **Length**: INF = always new notes; 1, 2, 3, 4, 5, 6, 8, 12, 16, 24, 32 = loop the most recent notes. Colour like the module LED: red = divisible by 2, blue = by 3, violet = both. Global or per channel
 - **Rhythm mode**: random repeating rhythm instead of pass-through, Density sets how many steps play. The rhythm is part of the loop
+- **Vary**: Skip (leave notes out), Octave (jump down / both / up) and 5th, each with a chance. Rolled fresh on every trigger, so the loop never sounds static
 - **Gate**: INPUT (as long as the incoming note) or 1/64 to 1/2
 - **NEW** rolls new notes, **RESET** restarts all loops on the next trigger, optional reset when the DAW starts
 - Scale, Root and Spread changes are applied live to the loop
@@ -38,13 +40,17 @@ The 27 scales (family / flavor / count):
 | SYM Dim | Tritone | Diminished 7 | Octatonic |
 | SYM Chroma | Octaves | Fifths | Chromatic |
 
+## Manual
+
+[English](docs/Repetitor-Manual-EN.pdf) · [Deutsch](docs/Repetitor-Manual-DE.pdf) (also in every release)
+
 ## Use
 
 - **Bitwig**: put Repetitor on an instrument track before the instrument.
 - **Logic Pro**: MIDI FX slot > Audio Units > Dani Koenig > Repetitor.
-- **Ableton Live**: use **Repetitor Inst** (instrument with MIDI output, installed together with Repetitor):
-  1. MIDI track 1: load *Repetitor Inst*. Put a clip with notes on this track (or set the channels to the internal clock).
-  2. MIDI track 2 with your synth: *MIDI From* = track 1, below that choose *Repetitor Inst*. Set *Monitor* to *In*.
+- **Ableton Live**: use **Repetitor Instrument** (instrument with MIDI output, installed together with Repetitor):
+  1. MIDI track 1: load *Repetitor Instrument*. Put a clip with notes on this track (or set the channels to the internal clock).
+  2. MIDI track 2 with your synth: *MIDI From* = track 1, below that choose *Repetitor Instrument*. Set *Monitor* to *In*.
   3. Ableton merges all MIDI channels of a plugin into one, so all four voices arrive on track 2. For one voice per track, switch the other channels off.
 
 ## Install
