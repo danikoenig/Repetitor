@@ -5,7 +5,12 @@
 using APVTS = juce::AudioProcessorValueTreeState;
 
 RepetitorProcessor::RepetitorProcessor()
+#if REPETITOR_INSTRUMENT
+    // Ableton-Variante: Instrument mit (stillem) Stereo-Ausgang und MIDI-Ausgang
+    : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+#else
     : AudioProcessor (BusesProperties()),
+#endif
       apvts (*this, nullptr, "Repetitor", createLayout())
 {
     regenerate();

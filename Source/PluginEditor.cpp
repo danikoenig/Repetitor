@@ -283,7 +283,8 @@ void RepetitorEditor::paint (juce::Graphics& g)
     g.drawText ("REPETITOR", margin + 2, 10, 220, 30, juce::Justification::centredLeft);
     g.setColour (textDim);
     g.setFont (juce::FontOptions (11.5f));
-    g.drawText ("quad random quantized note generator  /  by Dani Koenig", margin + 172, 14, 400, 24, juce::Justification::centredLeft);
+    g.drawText (juce::String (REPETITOR_INSTRUMENT ? "INST  /  " : "") + "quad random quantized note generator  /  by Dani Koenig",
+                margin + 172, 14, 460, 24, juce::Justification::centredLeft);
 
     drawCard (g, secPitch, "PITCH", pitchCol);
     drawCard (g, secScale, "SCALE", scaleCol);

@@ -57,17 +57,24 @@ public:
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
-    bool isBusesLayoutSupported (const BusesLayout&) const override { return true; }
+    bool isBusesLayoutSupported (const BusesLayout& l) const override
+    {
+        return l.getMainOutputChannelSet().isDisabled() || l.getMainOutputChannelSet() == juce::AudioChannelSet::stereo()
+            || l.getMainOutputChannelSet() == juce::AudioChannelSet::mono();
+    }
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     using AudioProcessor::processBlock;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "Repetitor"; }
+   #ifndef REPETITOR_INSTRUMENT
+    #define REPETITOR_INSTRUMENT 0
+   #endif
+    const juce::String getName() const override { return REPETITOR_INSTRUMENT ? "Repetitor Inst" : "Repetitor"; }
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return true; }
-    bool isMidiEffect() const override { return true; }
+    bool isMidiEffect() const override { return ! REPETITOR_INSTRUMENT; }
     double getTailLengthSeconds() const override { return 0.0; }
 
     int getNumPrograms() override { return 1; }

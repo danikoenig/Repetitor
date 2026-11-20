@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Repetitor VERSION 0.1.0)
+project(Repetitor VERSION 0.2.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,40 +18,58 @@ else()
     FetchContent_MakeAvailable(JUCE)
 endif()
 
-juce_add_plugin(Repetitor
-    COMPANY_NAME "Dani Koenig"
-    BUNDLE_ID "ch.danikoenig.repetitor"
-    PLUGIN_MANUFACTURER_CODE Dkng
-    PLUGIN_CODE Rpt1
-    FORMATS VST3 AU
-    AU_MAIN_TYPE kAudioUnitType_MIDIProcessor
-    PRODUCT_NAME "Repetitor"
-    IS_SYNTH FALSE
-    NEEDS_MIDI_INPUT TRUE
-    NEEDS_MIDI_OUTPUT TRUE
-    IS_MIDI_EFFECT TRUE
-    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
-    COPY_PLUGIN_AFTER_BUILD FALSE
-    VST3_CATEGORIES Fx Generator)
+# Zwei Varianten aus demselben Code:
+#  Repetitor       MIDI-Effekt (Bitwig, Logic MIDI FX, Reaper ...)
+#  Repetitor Inst  Instrument mit MIDI-Ausgang (Ableton Live: auf eigener Spur, andere Spuren holen "MIDI From")
+function(repetitor_target target product code bundle au_type is_instr)
+    if(is_instr)
+        set(midi_fx FALSE)
+        set(synth TRUE)
+        set(cats Instrument Generator)
+    else()
+        set(midi_fx TRUE)
+        set(synth FALSE)
+        set(cats Fx Generator)
+    endif()
 
-target_sources(Repetitor PRIVATE
-    Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp
-    Source/Look.cpp)
+    juce_add_plugin(${target}
+        COMPANY_NAME "Dani Koenig"
+        BUNDLE_ID "ch.danikoenig.${bundle}"
+        PLUGIN_MANUFACTURER_CODE Dkng
+        PLUGIN_CODE ${code}
+        FORMATS VST3 AU
+        AU_MAIN_TYPE ${au_type}
+        PRODUCT_NAME "${product}"
+        IS_SYNTH ${synth}
+        NEEDS_MIDI_INPUT TRUE
+        NEEDS_MIDI_OUTPUT TRUE
+        IS_MIDI_EFFECT ${midi_fx}
+        EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+        COPY_PLUGIN_AFTER_BUILD FALSE
+        VST3_CATEGORIES ${cats})
 
-target_compile_definitions(Repetitor PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_VST3_CAN_REPLACE_VST2=0
-)
+    target_sources(${target} PRIVATE
+        Source/PluginProcessor.cpp
+        Source/PluginEditor.cpp
+        Source/Look.cpp)
 
-target_link_libraries(Repetitor
-    PRIVATE
-        juce::juce_audio_utils
-    PUBLIC
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
+    target_compile_definitions(${target} PUBLIC
+        REPETITOR_INSTRUMENT=$<IF:$<BOOL:${is_instr}>,1,0>
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_VST3_CAN_REPLACE_VST2=0)
+
+    target_link_libraries(${target}
+        PRIVATE
+            juce::juce_audio_utils
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_lto_flags
+            juce::juce_recommended_warning_flags)
+endfunction()
+
+repetitor_target(Repetitor     "Repetitor"      Rpt1 repetitor     kAudioUnitType_MIDIProcessor FALSE)
+repetitor_target(RepetitorInst "Repetitor Inst" Rpt2 repetitorinst kAudioUnitType_MusicDevice   TRUE)
 
 # Optionaler Test (nur lokal): -DREPETITOR_TEST_SRC=tests/EngineTest.cpp
 if(REPETITOR_TEST_SRC)

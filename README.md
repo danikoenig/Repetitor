@@ -1,6 +1,6 @@
 # Repetitor
 
-Free quad random quantized note generator for macOS (Apple Silicon), VST3 and Audio Unit (MIDI FX).
+Free quad random quantized note generator for macOS (Apple Silicon), VST3 and Audio Unit (MIDI FX, plus an instrument version with MIDI out for Ableton Live).
 By Dani Koenig. Inspired by the Noise Engineering Gamut Repetitor Eurorack module, rebuilt as a MIDI effect: MIDI in, MIDI out.
 
 ![Repetitor](docs/screenshot.png)
@@ -42,7 +42,10 @@ The 27 scales (family / flavor / count):
 
 - **Bitwig**: put Repetitor on an instrument track before the instrument.
 - **Logic Pro**: MIDI FX slot > Audio Units > Dani Koenig > Repetitor.
-- Ableton Live does not support MIDI effect plugins.
+- **Ableton Live**: use **Repetitor Inst** (instrument with MIDI output, installed together with Repetitor):
+  1. MIDI track 1: load *Repetitor Inst*. Put a clip with notes on this track (or set the channels to the internal clock).
+  2. MIDI track 2 with your synth: *MIDI From* = track 1, below that choose *Repetitor Inst*. Set *Monitor* to *In*.
+  3. Ableton merges all MIDI channels of a plugin into one, so all four voices arrive on track 2. For one voice per track, switch the other channels off.
 
 ## Install
 

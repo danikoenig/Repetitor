@@ -8,6 +8,8 @@ for base in "/Library" /Users/*/Library; do
   [ -d "$base" ] || continue
   rm -rf "$base/Audio/Plug-Ins/VST3/$NAME.vst3"
   rm -rf "$base/Audio/Plug-Ins/Components/$NAME.component"
+  rm -rf "$base/Audio/Plug-Ins/VST3/$NAME Inst.vst3"
+  rm -rf "$base/Audio/Plug-Ins/Components/$NAME Inst.component"
 done
 
 pkgutil --forget "$ID.vst3" >/dev/null 2>&1

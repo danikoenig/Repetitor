@@ -30,26 +30,33 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
 
       - name: Build
-        run: cmake --build build --config Release --target Repetitor_VST3 Repetitor_AU -j 4
+        run: cmake --build build --config Release --target Repetitor_VST3 Repetitor_AU RepetitorInst_VST3 RepetitorInst_AU -j 4
 
       - name: Validate AU (auval)
         run: |
           mkdir -p ~/Library/Audio/Plug-Ins/Components
           cp -R "build/Repetitor_artefacts/Release/AU/Repetitor.component" ~/Library/Audio/Plug-Ins/Components/
+          cp -R "build/RepetitorInst_artefacts/Release/AU/Repetitor Inst.component" ~/Library/Audio/Plug-Ins/Components/
           killall -9 AudioComponentRegistrar 2>/dev/null || true
           sleep 2
           auval -a | grep -i "Dkng" || true
           set -o pipefail
-          auval -v aumi Rpt1 Dkng | tail -40
+          auval -v aumi Rpt1 Dkng | tail -20
+          auval -v aumu Rpt2 Dkng | tail -20
 
       - name: Sign (ad-hoc) and package
         run: |
           ART=build/Repetitor_artefacts/Release
           codesign --force --deep --sign - "$ART/VST3/Repetitor.vst3"
           codesign --force --deep --sign - "$ART/AU/Repetitor.component"
+          INST=build/RepetitorInst_artefacts/Release
+          codesign --force --deep --sign - "$INST/VST3/Repetitor Inst.vst3"
+          codesign --force --deep --sign - "$INST/AU/Repetitor Inst.component"
           mkdir -p dist "pkg/Repetitor"
           cp -R "$ART/VST3/Repetitor.vst3" "pkg/Repetitor/"
           cp -R "$ART/AU/Repetitor.component" "pkg/Repetitor/"
+          cp -R "$INST/VST3/Repetitor Inst.vst3" "pkg/Repetitor/"
+          cp -R "$INST/AU/Repetitor Inst.component" "pkg/Repetitor/"
           cp INSTALL.txt "pkg/Repetitor/INSTALL.txt"
           ditto -c -k --keepParent "pkg/Repetitor" "dist/Repetitor-macOS-arm64.zip"
 
@@ -58,19 +65,24 @@ jobs:
           ART=build/Repetitor_artefacts/Release
           VERSION=$(grep -m1 -oE 'project\(Repetitor VERSION [0-9.]+' CMakeLists.txt | grep -oE '[0-9.]+$')
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          INST=build/RepetitorInst_artefacts/Release
           mkdir -p pkgroot build/pkg
           cp -R "$ART/VST3/Repetitor.vst3" pkgroot/
+          cp -R "$INST/VST3/Repetitor Inst.vst3" pkgroot/
           # Bundle nicht umleiten (sonst installiert macOS ggf. an einen alten Ort)
           pkgbuild --analyze --root pkgroot build/pkg/component.plist
           plutil -replace 0.BundleIsRelocatable -bool NO build/pkg/component.plist
+          plutil -replace 1.BundleIsRelocatable -bool NO build/pkg/component.plist
           pkgbuild --root pkgroot --component-plist build/pkg/component.plist \
             --identifier ch.danikoenig.repetitor.vst3 --version "$VERSION" \
             --install-location "/Library/Audio/Plug-Ins/VST3" build/pkg/RepetitorVST3.pkg
           # AU-Paket
           mkdir -p pkgroot-au
           cp -R "$ART/AU/Repetitor.component" pkgroot-au/
+          cp -R "$INST/AU/Repetitor Inst.component" pkgroot-au/
           pkgbuild --analyze --root pkgroot-au build/pkg/component-au.plist
           plutil -replace 0.BundleIsRelocatable -bool NO build/pkg/component-au.plist
+          plutil -replace 1.BundleIsRelocatable -bool NO build/pkg/component-au.plist
           pkgbuild --root pkgroot-au --component-plist build/pkg/component-au.plist \
             --identifier ch.danikoenig.repetitor.au --version "$VERSION" \
             --install-location "/Library/Audio/Plug-Ins/Components" build/pkg/RepetitorAU.pkg
