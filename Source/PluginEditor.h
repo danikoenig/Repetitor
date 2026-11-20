@@ -15,6 +15,7 @@ public:
     void refresh();
 
 private:
+    friend struct ReelAccess;
     RepetitorProcessor& proc;
     int ch;
     juce::ToggleButton onButton;
@@ -38,6 +39,7 @@ public:
     void resized() override;
 
 private:
+    friend struct ReelAccess;
     void timerCallback() override;
     void updateLengthColour();
     int keyAt (juce::Point<int>) const;

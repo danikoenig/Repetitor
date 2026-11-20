@@ -121,6 +121,7 @@ public:
     void usePresetScale();                                   // zurueck zu den Schaltern
 
 private:
+    friend struct ReelAccess;   // nur fuer den Reel-Renderer (tests/ReelRender.cpp)
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
 
     struct Channel
