@@ -13,7 +13,7 @@ def font(w, s): return ImageFont.truetype(FONT + {"black": "Inter-Black.otf", "b
 BG1, BG2 = (23, 24, 28), (15, 16, 19)
 TEXT, DIM = (236, 238, 242), (125, 130, 140)
 SLOT = [(255, 122, 47), (79, 195, 247), (105, 240, 174), (179, 136, 255)]
-URL = "github.com/danikoenig/Repetitor/releases"
+URL = "danikoenig.github.io/plugins"
 
 def union(*rs):
     x0 = min(r[0] for r in rs); y0 = min(r[1] for r in rs)
@@ -61,7 +61,7 @@ if NEW15:
     FOCUS["vm"] = pad(union(R0["vary"], R0["midi"]), 10)
     SCENES = [
         (0.0, 6.0, "", "", "full", SLOT[0]),
-        (6.0, 16.0, "PRESS PLAY. IT RUNS.", "all four channels on 1/16  ·  no MIDI needed", "full", SLOT[0]),
+        (6.0, 16.0, "ONE VOICE TO START", "channel 1 runs  ·  switch on 2 to 4 with ON", "full", SLOT[0]),
         (16.0, 28.0, "OWN SPEED PER CHANNEL", "1/32 to 1 bar  ·  or MIDI IN", "rowctl", SLOT[1]),
         (28.0, 38.0, "NOTE LENGTH PER CHANNEL", "gate from short to legato", "rowctl", SLOT[2]),
         (38.0, 56.0, "MOVE YOUR LOOP", "drag the box  ·  or draw your own loop", "steps", (77, 208, 225)),
@@ -211,7 +211,7 @@ def render(f):
                 draw_cursor(img, cx, cy, c[2], t)
 
         d = ImageDraw.Draw(img, "RGBA")
-        centered(d, 1790, "free  ·  MIDI plugin  ·  VST3 + AU  ·  Mac", F_SMALL, DIM)
+        centered(d, 1790, "free  ·  MIDI plugin  ·  VST3 + AU + CLAP  ·  Mac", F_SMALL, DIM)
 
     # Endkarte
     if t >= GUI_UNTIL:
@@ -221,7 +221,7 @@ def render(f):
         logo(e, W / 2 - 86, 430, 180, 16)
         centered(e, 660, "REPETITOR 1.5" if NEW15 else "REPETITOR", font("black", 104 if NEW15 else 116), TEXT)
         centered(e, 805, "what's new" if NEW15 else "random notes that always fit", F_TSUB, DIM)
-        lines = (["rate + gate per channel", "move your loop  ·  draw your own", "new scales  ·  piano keys  ·  humanize"] if NEW15 else
+        lines = (["calm start  ·  channel 1 only", "rate + gate per channel  ·  move your loop", "new scales  ·  piano keys  ·  humanize"] if NEW15 else
                  ["4 voices  ·  18 scales  ·  your own scale", "loop what you like  ·  1 to 32 steps", "rhythm  ·  skip  ·  octave"])
         for k, ln in enumerate(lines):
             centered(e, 930 + k * 62, ln, font("semi", 40), TEXT)
@@ -249,7 +249,7 @@ if __name__ == "__main__":
         p.stdin.write(render(f).tobytes())
         if f % 150 == 0: print("compose", f, "/", n, flush=True)
     p.stdin.close(); p.wait()
-    audio_in = ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"] if NEW15 else ["-i", "out/audio.wav"]
+    audio_in = ["-i", "out/audio.wav"]
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", "video_tmp.mp4"] + audio_in + ["-c:v", "copy",
                     "-c:a", "aac", "-b:a", "256k", "-shortest", "-movflags", "+faststart", "repetitor_reel.mp4"], check=True)
     print("video done")

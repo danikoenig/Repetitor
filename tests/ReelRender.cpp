@@ -392,8 +392,10 @@ int ReelAccess::run (int argc, char** argv)
     jazz = argc > 4 && juce::String (argv[4]) == "jazz";
     club = argc > 4 && juce::String (argv[4]) == "club";
     whatsNew = argc > 4 && juce::String (argv[4]) == "new15";
+    const bool shot = argc > 4 && juce::String (argv[4]) == "shot";   // nur Screenshot (INIT-Zustand) -> shot.png
+    if (argc > 4 && juce::String (argv[4]) == "new16") { whatsNew = true; club = true; }   // What's new 1.5.x mit Club-Pluck-Sound
     if (whatsNew) { longMode = false; dramatic = false; }
-    if (club) longMode = true;
+    if (club && ! whatsNew) longMode = true;
     if (jazz || club) dramatic = false;
     if (whatsNew)      setTempo (124.0, 90.0 / (240.0 / 124.0), 84.0 / (240.0 / 124.0));   // 90 s, GUI bis 84 s
     else if (club)     setTempo (124.0, 46.5, 42.0);  // 90 s
@@ -480,6 +482,20 @@ int ReelAccess::run (int argc, char** argv)
     ed.resized();
     tick (ed);
 
+    if (shot)
+    {
+        p.initAll();   // Grundstellung wie beim Laden: nur Kanal 1 an
+        setParam (p, ParamIDs::root, 9.0f);
+        tick (ed);
+        auto img = ed.createComponentSnapshot (ed.getLocalBounds(), true, 1.0f);
+        auto file = outDir.getChildFile ("shot.png");
+        file.deleteFile();
+        juce::FileOutputStream os (file);
+        juce::PNGImageFormat png;
+        png.writeImageToStream (img, os);
+        return 0;
+    }
+
     // ---------------------------------------------------------------- Ablauf
     struct Event { double t; std::function<void()> fn; };
     std::vector<Event> ev;
@@ -554,6 +570,10 @@ int ReelAccess::run (int argc, char** argv)
         auto comboClick = [&] (double t, juce::ComboBox& box, std::function<void()> fn) { click (t, centre (in (ed, box)), std::move (fn)); };
 
         kf (3.0, { 900.0f, 420.0f });
+        // ONE VOICE TO START (6-16 s): Kanal 2 bis 4 sind nach INIT aus, nacheinander einschalten
+        click (9.5,  centre (in (ed, rowsOf (1).onButton)), [&] { setParam (p, ParamIDs::chOn (1), 1.0f); });
+        click (12.0, centre (in (ed, rowsOf (2).onButton)), [&] { setParam (p, ParamIDs::chOn (2), 1.0f); });
+        click (14.5, centre (in (ed, rowsOf (3).onButton)), [&] { setParam (p, ParamIDs::chOn (3), 1.0f); });
         // OWN SPEED (16-28 s)
         comboClick (18.0, rowsOf (1).srcBox, [&] { setParam (p, ParamIDs::chSrc (1), 5.0f); });   // 1/8
         comboClick (21.0, rowsOf (2).srcBox, [&] { setParam (p, ParamIDs::chSrc (2), 7.0f); });   // 1/4
