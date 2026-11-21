@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Repetitor VERSION 1.5.1)
+project(Repetitor VERSION 1.5.2)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,6 +17,17 @@ else()
         GIT_SHALLOW ON)
     FetchContent_MakeAvailable(JUCE)
 endif()
+
+# CLAP (Bitwig, Reaper u.a.) ueber clap-juce-extensions
+include(FetchContent)
+FetchContent_Declare(
+    clap-juce-extensions
+    GIT_REPOSITORY https://github.com/free-audio/clap-juce-extensions.git
+    GIT_TAG main
+    GIT_SUBMODULES_RECURSE TRUE
+    EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(clap-juce-extensions)
+
 
 # Zwei Varianten aus demselben Code:
 #  Repetitor       MIDI-Effekt (Bitwig, Logic MIDI FX, Reaper ...)
@@ -70,6 +81,14 @@ endfunction()
 
 repetitor_target(Repetitor     "Repetitor"      Rpt1 repetitor     kAudioUnitType_MIDIProcessor FALSE)
 repetitor_target(RepetitorInst "Repetitor Instrument" Rpt2 repetitorinst kAudioUnitType_MusicDevice   TRUE)
+
+clap_juce_extensions_plugin(TARGET Repetitor
+    CLAP_ID "ch.danikoenig.repetitor"
+    CLAP_FEATURES note-effect)
+
+clap_juce_extensions_plugin(TARGET RepetitorInst
+    CLAP_ID "ch.danikoenig.repetitorinst"
+    CLAP_FEATURES instrument note-effect)
 
 # Optionaler Test (nur lokal): -DREPETITOR_TEST_SRC=tests/EngineTest.cpp
 if(REPETITOR_TEST_SRC)

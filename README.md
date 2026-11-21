@@ -1,6 +1,6 @@
 # Repetitor
 
-Free quad random quantized note generator for macOS (Apple Silicon), VST3 and Audio Unit (MIDI FX, plus an instrument version with MIDI out for Ableton Live).
+Free quad random quantized note generator for macOS (Apple Silicon), VST3, CLAP and Audio Unit (MIDI FX, plus an instrument version with MIDI out for Ableton Live).
 By Dani Koenig. Inspired by the Noise Engineering Gamut Repetitor Eurorack module, rebuilt as a MIDI effect: MIDI in, MIDI out.
 
 ![Repetitor](docs/screenshot.png)

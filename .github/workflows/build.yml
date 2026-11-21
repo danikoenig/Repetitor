@@ -30,7 +30,7 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
 
       - name: Build
-        run: cmake --build build --config Release --target Repetitor_VST3 Repetitor_AU RepetitorInst_VST3 RepetitorInst_AU -j 4
+        run: cmake --build build --config Release --target Repetitor_VST3 Repetitor_AU RepetitorInst_VST3 RepetitorInst_AU Repetitor_CLAP RepetitorInst_CLAP -j 4
 
       - name: Validate AU (auval)
         run: |
@@ -49,14 +49,18 @@ jobs:
           ART=build/Repetitor_artefacts/Release
           codesign --force --deep --sign - "$ART/VST3/Repetitor.vst3"
           codesign --force --deep --sign - "$ART/AU/Repetitor.component"
+          codesign --force --deep --sign - "$ART/CLAP/Repetitor.clap"
           INST=build/RepetitorInst_artefacts/Release
           codesign --force --deep --sign - "$INST/VST3/Repetitor Instrument.vst3"
           codesign --force --deep --sign - "$INST/AU/Repetitor Instrument.component"
+          codesign --force --deep --sign - "$INST/CLAP/Repetitor Instrument.clap"
           mkdir -p dist "pkg/Repetitor"
           cp -R "$ART/VST3/Repetitor.vst3" "pkg/Repetitor/"
           cp -R "$ART/AU/Repetitor.component" "pkg/Repetitor/"
+          cp -R "$ART/CLAP/Repetitor.clap" "pkg/Repetitor/"
           cp -R "$INST/VST3/Repetitor Instrument.vst3" "pkg/Repetitor/"
           cp -R "$INST/AU/Repetitor Instrument.component" "pkg/Repetitor/"
+          cp -R "$INST/CLAP/Repetitor Instrument.clap" "pkg/Repetitor/"
           cp INSTALL.txt "pkg/Repetitor/INSTALL.txt"
           cp docs/Repetitor-Manual-EN.pdf docs/Repetitor-Manual-DE.pdf "pkg/Repetitor/"
           cp docs/Repetitor-Manual-EN.pdf docs/Repetitor-Manual-DE.pdf dist/
@@ -89,6 +93,15 @@ jobs:
           pkgbuild --root pkgroot-au --component-plist build/pkg/component-au.plist \
             --identifier ch.danikoenig.repetitor.au --version "$VERSION" \
             --install-location "/Library/Audio/Plug-Ins/Components" build/pkg/RepetitorAU.pkg
+          # CLAP-Paket
+          mkdir -p pkgroot-clap
+          cp -R "$ART/CLAP/Repetitor.clap" pkgroot-clap/
+          cp -R "$INST/CLAP/Repetitor Instrument.clap" pkgroot-clap/
+          pkgbuild --analyze --root pkgroot-clap build/pkg/component-clap.plist
+          plutil -replace 0.BundleIsRelocatable -bool NO build/pkg/component-clap.plist
+          pkgbuild --root pkgroot-clap --component-plist build/pkg/component-clap.plist \
+            --identifier ch.danikoenig.repetitor.clap --version "$VERSION" \
+            --install-location "/Library/Audio/Plug-Ins/CLAP" build/pkg/RepetitorCLAP.pkg
           sed "s/@VERSION@/$VERSION/g" installer/distribution.xml > build/pkg/distribution.xml
           productbuild --distribution build/pkg/distribution.xml --resources installer/resources \
             --package-path build/pkg "dist/Repetitor-Installer.pkg"

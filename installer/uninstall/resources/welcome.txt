@@ -2,7 +2,7 @@ Uninstall Repetitor
 by Dani Koenig
 
 This removes Repetitor from your Mac:
-- VST3 and Audio Unit (system and user plug-in folders)
+- VST3, Audio Unit and CLAP (system and user plug-in folders)
 
 Your projects, presets and settings are not touched.
 Click Continue, then Install (macOS calls it Install, it uninstalls) and enter your Mac password.

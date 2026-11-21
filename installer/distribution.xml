@@ -14,6 +14,7 @@
         <line choice="default">
             <line choice="ch.danikoenig.repetitor.vst3"/>
             <line choice="ch.danikoenig.repetitor.au"/>
+            <line choice="ch.danikoenig.repetitor.clap"/>
         </line>
     </choices-outline>
     <choice id="default"/>
@@ -23,6 +24,10 @@
     <choice id="ch.danikoenig.repetitor.au" visible="false">
         <pkg-ref id="ch.danikoenig.repetitor.au"/>
     </choice>
+    <choice id="ch.danikoenig.repetitor.clap" visible="false">
+        <pkg-ref id="ch.danikoenig.repetitor.clap"/>
+    </choice>
+    <pkg-ref id="ch.danikoenig.repetitor.clap" version="@VERSION@" onConclusion="none">RepetitorCLAP.pkg</pkg-ref>
     <pkg-ref id="ch.danikoenig.repetitor.vst3" version="@VERSION@" onConclusion="none">RepetitorVST3.pkg</pkg-ref>
     <pkg-ref id="ch.danikoenig.repetitor.au" version="@VERSION@" onConclusion="none">RepetitorAU.pkg</pkg-ref>
 </installer-gui-script>

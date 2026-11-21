@@ -1,6 +1,9 @@
-Free quad random quantized note generator for macOS (Apple Silicon), VST3 and Audio Unit (MIDI FX). By Dani Koenig.
+Free quad random quantized note generator for macOS (Apple Silicon), VST3, CLAP and Audio Unit (MIDI FX). By Dani Koenig.
 
 **Download `Repetitor-Installer.pkg`** and double-click it. macOS blocks it the first time: open System Settings > Privacy & Security and click "Open Anyway". Full guide: see INSTALL.txt in the ZIP or in the repository.
+
+### New in v1.5.2
+- **CLAP format** (Bitwig, Reaper ...) in addition to VST3 and Audio Unit. The installer puts it in /Library/Audio/Plug-Ins/CLAP.
 
 ### v1.5.1
 - Manuals (English and German) updated for all 1.5 features
