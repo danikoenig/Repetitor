@@ -25,7 +25,7 @@ When you hear something you like, turn Length down to loop the most recent notes
 - **Length**: INF = always new notes; 1, 2, 3, 4, 5, 6, 8, 12, 16, 24, 32 = loop the most recent notes. Colour like the module LED: red = divisible by 2, blue = by 3, violet = both. Global or per channel (any length 1 to 32). Drag the loop box to move it, or drag across the steps to pick your own loop
 - **Rhythm mode**: random repeating rhythm instead of pass-through, Density sets how many steps play. The rhythm is part of the loop
 - **Vary**: Skip (leave notes out) and Octave (jump down / both / up), each with a chance. Rolled fresh on every trigger, so the loop never sounds static
-- **NEW** rolls new notes right away, **INIT** sets every control back to its default, optional loop restart when the DAW starts
+- **NEW** rolls new notes right away, **INIT** sets every control back to its default (only channel 1 on, channels 2 to 4 off), optional loop restart when the DAW starts
 - **Resizable window**: drag the bottom right corner (60 % to 200 %), opens at 100 %
 - Scale, Root and Spread changes are applied live to the loop
 - Loops are saved with the project

@@ -49,7 +49,7 @@ T = {
  "kind": "MIDI effect for macOS (Apple Silicon)  ·  VST3, Audio Unit and CLAP",
  "by": "by Dani Koenig",
  "intro": ("Repetitor generates random notes that always fit a scale, on four channels at once. "
-           "Press play: every channel runs on its own speed (RATE) and every step creates a new note. Or trigger it with your own MIDI notes. "
+           "Press play: channel 1 runs on its own speed (RATE) and every step creates a new note. Switch on channels 2 to 4 (ON) when you want more voices. Or trigger it with your own MIDI notes. "
            "When you hear something you like, turn Length down: the most recent notes (1 to 32 steps) loop. "
            "MIDI goes in, MIDI comes out. Repetitor makes no sound itself, it plays your synth."),
  "inspired": "Inspired by the Noise Engineering Gamut Repetitor Eurorack module, rebuilt as a MIDI plugin. Not affiliated with Noise Engineering.",
@@ -62,11 +62,11 @@ T = {
  "daws": [
    ("Bitwig", "Put <b>Repetitor</b> on an instrument track before the synth and press play. For MIDI triggers set RATE to MIDI IN."),
    ("Logic Pro", "Instrument track: MIDI FX slot &gt; Audio Units &gt; Dani Koenig &gt; Repetitor."),
-   ("Ableton Live", "1. MIDI track 1: load <b>Repetitor Instrument</b> (it runs on 1/16 as soon as you press play).<br/>"
+   ("Ableton Live", "1. MIDI track 1: load <b>Repetitor Instrument</b> (channel 1 runs on 1/16 as soon as you press play).<br/>"
                     "2. MIDI track 2 with your synth: <i>MIDI From</i> = track 1, below that <i>Repetitor Instrument</i>. Monitor = <i>In</i>.<br/>"
-                    "Ableton merges all MIDI channels of a plugin, so all four voices arrive on track 2. For one voice per track, switch the other channels off."),
+                    "Ableton merges all MIDI channels of a plugin, so all active voices arrive on track 2. For one voice per track, keep the other channels off."),
  ],
- "first": ("First patch: load Repetitor before a synth and press play: all four channels run on 1/16 right away. "
+ "first": ("First patch: load Repetitor before a synth and press play: channel 1 runs on 1/16 right away, channels 2 to 4 are off. Switch them on with ON. "
            "Pick a scale, set Spread. When a phrase sounds good, turn Length to 8 or 16. Press <b>NEW</b> for new notes."),
  "overview": "The window",
  "controls": "Controls",
@@ -102,8 +102,8 @@ T = {
     ("Humanize", "Random velocity variation per note (up to ±40), so it sounds less mechanical."),
   ]),
   ("ch", "CHANNELS 1-4", [
-    ("ON", "Channel on / off. Off: the loop keeps running, but no notes are sent."),
-    ("RATE", "Speed of the channel, synced to the DAW tempo: 1/32, 1/16T, 1/16 (default), 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 BAR. Runs as soon as the DAW plays. Or MIDI IN: every incoming note is a trigger."),
+    ("ON", "Channel on / off. Only channel 1 is on after loading or INIT. Off: the loop keeps running, but no notes are sent."),
+    ("RATE", "Speed of the channel, synced to the DAW tempo: 1/32, 1/16T, 1/16 (default), 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 BAR. Runs as soon as the DAW plays (when the channel is on). Or MIDI IN: every incoming note is a trigger."),
     ("LENGTH", "GLOBAL follows the big Length knob, or any length from 1 to 32 per channel, or INF."),
     ("GATE", "Note length in % of the step. Fully right = legato. With MIDI IN the step is the time between the incoming notes."),
     ("Oct", "Octave offset for this channel (-3 to +3)."),
@@ -125,13 +125,13 @@ T = {
                 "Add Octave 20 % and Skip 10 % for movement. Switch off channels 2 to 4."),
    ("Melody and counter-melody", "Channel 1 on 1/8, channel 2 on 1/4 with Oct +1, both on the same synth or on two synths. Different lengths per channel (e.g. 6 and 8) make the phrases shift against each other."),
    ("One note, a lot of groove", "Custom scale with only one note (click all other keys off). Octave 40 % BOTH, Skip 20 %."),
-   ("Chords", "All four channels on the same RATE, MIDI OUT all on one channel, COUNT = FEW. Every step plays a random chord."),
+   ("Chords", "Switch on all four channels, same RATE, MIDI OUT all on one channel, COUNT = FEW. Every step plays a random chord."),
  ],
  "tips": "Good to know",
  "tip_rows": [
    "Root, Scale and Spread are applied live: change them and the loop follows.",
    "Your loops, loop positions and own scale are saved with the project.",
-   "The channels run while the DAW plays (RATE on a note value).",
+   "The active channels run while the DAW plays (RATE on a note value). After loading or INIT only channel 1 is on.",
    "All parameters can be automated in the DAW.",
  ],
  "install": "Install",
@@ -147,7 +147,7 @@ T = {
  "kind": "MIDI-Effekt für macOS (Apple Silicon)  ·  VST3, Audio Unit und CLAP",
  "by": "von Dani Koenig",
  "intro": ("Repetitor erzeugt zufällige Noten, die immer in eine Skala passen, auf vier Kanälen gleichzeitig. "
-           "Drück Play: Jeder Kanal läuft in seinem eigenen Tempo (RATE), und jeder Schritt erzeugt eine neue Note. Oder du triggerst ihn mit eigenen MIDI-Noten. "
+           "Drück Play: Kanal 1 läuft in seinem eigenen Tempo (RATE), und jeder Schritt erzeugt eine neue Note. Kanal 2 bis 4 schaltest du bei Bedarf mit ON dazu. Oder du triggerst ihn mit eigenen MIDI-Noten. "
            "Gefällt dir, was du hörst, drehst du Length runter: Die letzten Noten (1 bis 32 Schritte) loopen. "
            "MIDI rein, MIDI raus. Repetitor macht selbst keinen Ton, er spielt deinen Synth."),
  "inspired": "Inspiriert vom Eurorack-Modul Gamut Repetitor von Noise Engineering, nachgebaut als MIDI-Plugin. Keine Verbindung zu Noise Engineering.",
@@ -160,11 +160,11 @@ T = {
  "daws": [
    ("Bitwig", "<b>Repetitor</b> auf einer Instrumentenspur vor den Synth legen und Play drücken. Für MIDI-Trigger RATE auf MIDI IN stellen."),
    ("Logic Pro", "Instrumentenspur: MIDI-FX-Slot &gt; Audio Units &gt; Dani Koenig &gt; Repetitor."),
-   ("Ableton Live", "1. MIDI-Spur 1: <b>Repetitor Instrument</b> laden (läuft in 1/16, sobald du Play drückst).<br/>"
+   ("Ableton Live", "1. MIDI-Spur 1: <b>Repetitor Instrument</b> laden (Kanal 1 läuft in 1/16, sobald du Play drückst).<br/>"
                     "2. MIDI-Spur 2 mit deinem Synth: <i>MIDI From</i> = Spur 1, darunter <i>Repetitor Instrument</i>. Monitor = <i>In</i>.<br/>"
-                    "Ableton legt alle MIDI-Kanäle eines Plugins zusammen, alle vier Stimmen kommen also auf Spur 2 an. Für eine Stimme pro Spur die anderen Kanäle ausschalten."),
+                    "Ableton legt alle MIDI-Kanäle eines Plugins zusammen, alle aktiven Stimmen kommen also auf Spur 2 an. Für eine Stimme pro Spur die anderen Kanäle aus lassen."),
  ],
- "first": ("Erster Patch: Repetitor vor einen Synth legen und Play drücken: Alle vier Kanäle laufen sofort in 1/16. "
+ "first": ("Erster Patch: Repetitor vor einen Synth legen und Play drücken: Kanal 1 läuft sofort in 1/16, Kanal 2 bis 4 sind aus und lassen sich mit ON zuschalten. "
            "Skala wählen, Spread einstellen. Klingt eine Phrase gut, Length auf 8 oder 16 drehen. <b>NEW</b> würfelt neue Noten."),
  "overview": "Das Fenster",
  "controls": "Bedienelemente",
@@ -200,8 +200,8 @@ T = {
     ("Humanize", "Zufällige Velocity-Schwankung pro Note (bis ±40), damit es weniger mechanisch klingt."),
   ]),
   ("ch", "KANÄLE 1-4", [
-    ("ON", "Kanal an / aus. Aus: Der Loop läuft weiter, es werden aber keine Noten gesendet."),
-    ("RATE", "Tempo des Kanals, synchron zur DAW: 1/32, 1/16T, 1/16 (Grundstellung), 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 BAR. Läuft los, sobald die DAW spielt. Oder MIDI IN: Jede Eingangsnote ist ein Trigger."),
+    ("ON", "Kanal an / aus. Nach dem Laden und nach INIT ist nur Kanal 1 an. Aus: Der Loop läuft weiter, es werden aber keine Noten gesendet."),
+    ("RATE", "Tempo des Kanals, synchron zur DAW: 1/32, 1/16T, 1/16 (Grundstellung), 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 BAR. Läuft los, sobald die DAW spielt (wenn der Kanal an ist). Oder MIDI IN: Jede Eingangsnote ist ein Trigger."),
     ("LENGTH", "GLOBAL folgt dem grossen Length-Regler, oder jede Länge von 1 bis 32 pro Kanal, oder INF."),
     ("GATE", "Notenlänge in % des Schritts. Ganz rechts = legato. Bei MIDI IN ist der Schritt der Abstand zwischen den Eingangsnoten."),
     ("Oct", "Oktav-Versatz für diesen Kanal (-3 bis +3)."),
@@ -223,13 +223,13 @@ T = {
                 "Mit Octave 20 % und Skip 10 % kommt Bewegung rein. Kanäle 2 bis 4 ausschalten."),
    ("Melodie und Gegenmelodie", "Kanal 1 auf 1/8, Kanal 2 auf 1/4 mit Oct +1, beide auf denselben oder auf zwei Synths. Unterschiedliche Längen pro Kanal (z.B. 6 und 8) verschieben die Phrasen gegeneinander."),
    ("Eine Note, viel Groove", "Eigene Skala mit nur einem Ton (alle anderen Tasten abwählen). Octave 40 % BOTH, Skip 20 %."),
-   ("Akkorde", "Alle vier Kanäle auf derselben RATE, MIDI OUT alle auf einen Kanal, COUNT = FEW. Jeder Schritt spielt einen zufälligen Akkord."),
+   ("Akkorde", "Alle vier Kanäle einschalten, dieselbe RATE, MIDI OUT alle auf einen Kanal, COUNT = FEW. Jeder Schritt spielt einen zufälligen Akkord."),
  ],
  "tips": "Gut zu wissen",
  "tip_rows": [
    "Root, Skala und Spread wirken sofort: Änderst du sie, folgt der Loop.",
    "Deine Loops, Loop-Positionen und deine eigene Skala werden mit dem Projekt gespeichert.",
-   "Die Kanäle laufen, solange die DAW spielt (RATE auf einem Notenwert).",
+   "Die aktiven Kanäle laufen, solange die DAW spielt (RATE auf einem Notenwert). Nach dem Laden und nach INIT ist nur Kanal 1 an.",
    "Alle Parameter lassen sich in der DAW automatisieren.",
  ],
  "install": "Installation",

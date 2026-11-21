@@ -1,6 +1,10 @@
 Free quad random quantized note generator for macOS (Apple Silicon), VST3, CLAP and Audio Unit (MIDI FX). By Dani Koenig.
 
-### New in v1.5.3
+### New in v1.5.4
+- **Calm start**: after loading the plugin and after INIT only channel 1 is on, channels 2 to 4 are off. Switch them on with ON. Applies to Repetitor and Repetitor Instrument. Saved projects keep their settings
+- **Manuals** (EN + DE) updated
+
+### v1.5.3
 - **Manuals** (EN + DE) regenerated: now mention the CLAP format and the CLAP install folder
 
 **Download `Repetitor-Installer.pkg`** and double-click it. macOS blocks it the first time: open System Settings > Privacy & Security and click "Open Anyway". Full guide: see INSTALL.txt in the ZIP or in the repository.

@@ -72,7 +72,7 @@ APVTS::ParameterLayout RepetitorProcessor::createLayout()
     for (int c = 0; c < numChannels; ++c)
     {
         const auto n = " " + juce::String (c + 1);
-        l.add (std::make_unique<juce::AudioParameterBool> (id (chOn (c)), "On" + n, true));
+        l.add (std::make_unique<juce::AudioParameterBool> (id (chOn (c)), "On" + n, c == 0));   // INIT: nur Kanal 1 aktiv, 2-4 aus
         l.add (std::make_unique<juce::AudioParameterChoice> (id (chSrc (c)), "Rate" + n, sourceNames, defaultRate));
         l.add (std::make_unique<juce::AudioParameterFloat> (id (chGate (c)), "Gate" + n, juce::NormalisableRange<float> (0.05f, 1.0f, 0.01f), 0.5f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return v >= 0.995f ? juce::String ("LEGATO") : juce::String (juce::roundToInt (v * 100.0f)) + "%"; })));

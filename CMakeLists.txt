@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Repetitor VERSION 1.5.3)
+project(Repetitor VERSION 1.5.4)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
