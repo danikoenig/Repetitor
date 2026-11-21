@@ -1,5 +1,7 @@
 # Repetitor
 
+**Manual (PDF):** [English](https://github.com/danikoenig/Repetitor/releases/latest/download/Repetitor-Manual-EN.pdf) | [Deutsch](https://github.com/danikoenig/repetitor/releases/latest/download/Repetitor-Manual-DE.pdf)
+
 Free quad random quantized note generator for macOS (Apple Silicon), VST3, CLAP and Audio Unit (MIDI FX, plus an instrument version with MIDI out for Ableton Live).
 By Dani Koenig. Inspired by the Noise Engineering Gamut Repetitor Eurorack module, rebuilt as a MIDI effect: MIDI in, MIDI out.
 
@@ -51,7 +53,7 @@ The 18 scales (mode / flavor / count):
 ## Install
 
 Download the latest release: [Releases](https://github.com/danikoenig/Repetitor/releases).
-`Repetitor-Installer.pkg` installs VST3 and AU. See [INSTALL.txt](INSTALL.txt).
+`Repetitor-Installer.pkg` installs VST3, AU and CLAP. See [INSTALL.txt](INSTALL.txt).
 
 ## Build
 
