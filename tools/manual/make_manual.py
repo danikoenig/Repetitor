@@ -46,7 +46,7 @@ SCALES = [
 T = {
 "en": {
  "subtitle": "Quad random quantized note generator",
- "kind": "MIDI effect for macOS (Apple Silicon)  ·  VST3 and Audio Unit",
+ "kind": "MIDI effect for macOS (Apple Silicon)  ·  VST3, Audio Unit and CLAP",
  "by": "by Dani Koenig",
  "intro": ("Repetitor generates random notes that always fit a scale, on four channels at once. "
            "Press play: every channel runs on its own speed (RATE) and every step creates a new note. Or trigger it with your own MIDI notes. "
@@ -137,14 +137,14 @@ T = {
  "install": "Install",
  "install_text": ("Download <b>Repetitor-Installer.pkg</b> from github.com/danikoenig/Repetitor/releases and double-click it. "
                   "macOS blocks it the first time: System Settings &gt; Privacy &amp; Security &gt; <i>Open Anyway</i>. "
-                  "The installer puts Repetitor and Repetitor Instrument into the VST3 and Components folders. "
+                  "The installer puts Repetitor and Repetitor Instrument into the VST3, Components and CLAP folders. "
                   "Restart the DAW and rescan the plugins. To remove everything, use Repetitor-Uninstaller.pkg. "
                   "Requirements: Apple Silicon Mac (M1 or newer), macOS 11 or newer."),
  "page": "Page",
 },
 "de": {
  "subtitle": "Quad Random Quantized Note Generator",
- "kind": "MIDI-Effekt für macOS (Apple Silicon)  ·  VST3 und Audio Unit",
+ "kind": "MIDI-Effekt für macOS (Apple Silicon)  ·  VST3, Audio Unit und CLAP",
  "by": "von Dani Koenig",
  "intro": ("Repetitor erzeugt zufällige Noten, die immer in eine Skala passen, auf vier Kanälen gleichzeitig. "
            "Drück Play: Jeder Kanal läuft in seinem eigenen Tempo (RATE), und jeder Schritt erzeugt eine neue Note. Oder du triggerst ihn mit eigenen MIDI-Noten. "
@@ -235,7 +235,7 @@ T = {
  "install": "Installation",
  "install_text": ("Lade <b>Repetitor-Installer.pkg</b> von github.com/danikoenig/Repetitor/releases und doppelklicke es. "
                   "macOS blockiert es beim ersten Mal: Systemeinstellungen &gt; Datenschutz &amp; Sicherheit &gt; <i>Dennoch öffnen</i>. "
-                  "Der Installer legt Repetitor und Repetitor Instrument in die Ordner VST3 und Components. "
+                  "Der Installer legt Repetitor und Repetitor Instrument in die Ordner VST3, Components und CLAP. "
                   "DAW neu starten und Plugins neu scannen. Entfernen: Repetitor-Uninstaller.pkg. "
                   "Voraussetzungen: Mac mit Apple Silicon (M1 oder neuer), macOS 11 oder neuer."),
  "page": "Seite",

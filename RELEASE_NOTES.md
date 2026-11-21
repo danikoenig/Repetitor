@@ -1,5 +1,8 @@
 Free quad random quantized note generator for macOS (Apple Silicon), VST3, CLAP and Audio Unit (MIDI FX). By Dani Koenig.
 
+### New in v1.5.3
+- **Manuals** (EN + DE) regenerated: now mention the CLAP format and the CLAP install folder
+
 **Download `Repetitor-Installer.pkg`** and double-click it. macOS blocks it the first time: open System Settings > Privacy & Security and click "Open Anyway". Full guide: see INSTALL.txt in the ZIP or in the repository.
 
 ### New in v1.5.2
