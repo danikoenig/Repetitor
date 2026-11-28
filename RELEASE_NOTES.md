@@ -1,5 +1,8 @@
 Free quad random quantized note generator for macOS (Apple Silicon), VST3, CLAP and Audio Unit (MIDI FX). By Dani Koenig.
 
+### New in v1.5.5
+- **Frame**: the window now has the same 4 px orange frame as Gain, Dub Delay and Remember, so all plugins share one look
+
 ### New in v1.5.4
 - **Calm start**: after loading the plugin and after INIT only channel 1 is on, channels 2 to 4 are off. Switch them on with ON. Applies to Repetitor and Repetitor Instrument. Saved projects keep their settings
 - **Manuals** (EN + DE) updated

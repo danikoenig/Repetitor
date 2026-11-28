@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "FrameOverlay.h"
 #include "Look.h"
 #include "Knob.h"
 #include "Widgets.h"
@@ -31,6 +32,8 @@ private:
 
 class RepetitorEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
+    FrameOverlay frameOverlay;
+
 public:
     explicit RepetitorEditor (RepetitorProcessor&);
     ~RepetitorEditor() override;

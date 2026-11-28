@@ -416,6 +416,7 @@ void RepetitorEditor::mouseExit (const juce::MouseEvent&)
 
 void RepetitorEditor::resized()
 {
+    frameOverlay.attach (*this, 1200.0f);
     // Alles wird im Grundraster 1200 x 676 angeordnet und dann proportional skaliert
     scale = juce::jmax (0.3f, (float) getWidth() / (float) W);
     processor.uiScale.store (scale);
